@@ -1,0 +1,511 @@
+import { Background, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow, type Edge } from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
+import { AlertTriangle, CheckCircle2, Link2, Plus, RefreshCcw, Save, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { PageHeader } from '../components/PageHeader'
+import { api, extractDesignError } from '../lib/api'
+import { appendBinding, removeBinding, updateBinding } from '../lib/bindingEditor'
+import {
+  addOperationNode,
+  addSubFlowNode,
+  buildDraftDocument,
+  buildFlowGraph,
+  connectEdges,
+  createEmptyDraft,
+  type FlowEdge,
+  type FlowNode,
+  LOCAL_OPERATION_LIBRARY,
+  parseDraftDocument,
+  ROOT_NODE_ID,
+  toPascalCase,
+  type FlowNodeData,
+} from '../lib/flowDraft'
+import type { DraftBinding, DraftVariable, FlowCatalogModel, FlowDraftModel } from '../types'
+
+export function FlowEditorPage() {
+  return (
+    <ReactFlowProvider>
+      <FlowEditorWorkspace />
+    </ReactFlowProvider>
+  )
+}
+
+function FlowEditorWorkspace() {
+  const { code = 'inbound-basic' } = useParams()
+  const navigate = useNavigate()
+  const reactFlow = useReactFlow<FlowNode, FlowEdge>()
+
+  const [draftModel, setDraftModel] = useState<FlowDraftModel | null>(null)
+  const [catalog, setCatalog] = useState<FlowCatalogModel | null>(null)
+  const [variables, setVariables] = useState<DraftVariable[]>([])
+  const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>([])
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [meta, setMeta] = useState({ name: code, description: '' })
+
+  const selectedNode = useMemo(
+    () => nodes.find((node) => node.id === selectedNodeId && node.id !== ROOT_NODE_ID) ?? null,
+    [nodes, selectedNodeId],
+  )
+
+  useEffect(() => {
+    void loadEditor()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code])
+
+  async function loadEditor() {
+    try {
+      setBusy('load')
+      setError(null)
+      const [draft, flowCatalog] = await Promise.all([
+        api.getFlowDraft(code).catch(() => null),
+        api.getFlowCatalog(),
+      ])
+
+      const model = draft ?? {
+        code,
+        name: toPascalCase(code),
+        description: '',
+        revision: 0,
+        draftDocumentJson: JSON.stringify(createEmptyDraft(code)),
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'local',
+      }
+
+      const document = parseDraftDocument(model.draftDocumentJson, code)
+      const graph = buildFlowGraph(document)
+
+      setDraftModel(model)
+      setMeta({ name: model.name, description: model.description ?? '' })
+      setCatalog(flowCatalog)
+      setVariables(document.variables)
+      setNodes(graph.nodes)
+      setEdges(graph.edges)
+      setSelectedNodeId(graph.nodes.find((node) => node.id !== ROOT_NODE_ID)?.id ?? null)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Failed to load flow editor.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  function updateSelectedNode(patch: Partial<FlowNodeData>) {
+    if (!selectedNode) {
+      return
+    }
+
+    setNodes((current) =>
+      current.map((node) =>
+        node.id === selectedNode.id
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                ...patch,
+              },
+            }
+          : node,
+      ),
+    )
+  }
+
+  function updateBindings(
+    key: 'inputs' | 'outputs',
+    index: number,
+    field: keyof DraftBinding,
+    value: string,
+  ) {
+    if (!selectedNode) {
+      return
+    }
+
+    updateSelectedNode({ [key]: updateBinding(selectedNode.data[key], index, field, value) })
+  }
+
+  function appendNodeBinding(key: 'inputs' | 'outputs') {
+    if (!selectedNode) {
+      return
+    }
+
+    updateSelectedNode({ [key]: appendBinding(selectedNode.data[key]) })
+  }
+
+  function removeNodeBinding(key: 'inputs' | 'outputs', index: number) {
+    if (!selectedNode) {
+      return
+    }
+
+    updateSelectedNode({ [key]: removeBinding(selectedNode.data[key], index) })
+  }
+
+  function addVariable() {
+    setVariables((current) => [
+      ...current,
+      {
+        id: `Variable${current.length + 1}`,
+        type: 'string',
+        usage: 'inputOutput',
+        initialValue: '',
+      },
+    ])
+  }
+
+  async function saveDraft() {
+    if (!draftModel) {
+      return
+    }
+
+    try {
+      setBusy('save')
+      setError(null)
+      const viewport = reactFlow.getViewport()
+      const document = buildDraftDocument(code, meta.name, variables, nodes, edges, viewport)
+      const saved = await api.saveFlowDraft(code, {
+        name: meta.name,
+        description: meta.description,
+        revision: draftModel.revision,
+        draftDocumentJson: JSON.stringify(document),
+      })
+      setDraftModel(saved)
+      setMessage(`Saved revision ${saved.revision}.`)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Failed to save draft.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function preflightDraft() {
+    if (!draftModel) {
+      return
+    }
+
+    try {
+      setBusy('preflight')
+      setError(null)
+      const result = await api.preflightFlow(code, draftModel.revision)
+      setMessage(`Preflight passed on revision ${result.sourceDraftRevision}.`)
+    } catch (caught) {
+      const model = extractDesignError(caught)
+      setError(model ? `${model.errorCode}: ${model.detail}` : caught instanceof Error ? caught.message : 'Preflight failed.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function publishDraft() {
+    if (!draftModel) {
+      return
+    }
+
+    try {
+      setBusy('publish')
+      setError(null)
+      const result = await api.publishFlow(code, { expectedRevision: draftModel.revision })
+      setMessage(`Published ${result.code} v${result.versionNumber}.`)
+      await loadEditor()
+    } catch (caught) {
+      const model = extractDesignError(caught)
+      setError(model ? `${model.errorCode}: ${model.detail}` : caught instanceof Error ? caught.message : 'Publish failed.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  function removeSelectedNode() {
+    if (!selectedNode) {
+      return
+    }
+    setEdges((current) => current.filter((edge) => edge.source !== selectedNode.id && edge.target !== selectedNode.id))
+    setNodes((current) => current.filter((node) => node.id !== selectedNode.id))
+    setSelectedNodeId(null)
+  }
+
+  return (
+    <div className="page flow-editor-page">
+      <PageHeader
+        eyebrow="Graph Designer"
+        title={`Flow Editor · ${code}`}
+        actions={
+          <div className="toolbar-row">
+            <button className="icon-button" type="button" onClick={() => void loadEditor()}>
+              <RefreshCcw size={16} />
+            </button>
+            <button className="secondary-button" type="button" onClick={() => void saveDraft()}>
+              <Save size={16} />
+              <span>{busy === 'save' ? 'Saving…' : 'Save draft'}</span>
+            </button>
+            <button className="secondary-button" type="button" onClick={() => void preflightDraft()}>
+              <CheckCircle2 size={16} />
+              <span>{busy === 'preflight' ? 'Checking…' : 'Preflight'}</span>
+            </button>
+            <button className="primary-button" type="button" onClick={() => void publishDraft()}>
+              <Link2 size={16} />
+              <span>{busy === 'publish' ? 'Publishing…' : 'Publish'}</span>
+            </button>
+          </div>
+        }
+      />
+
+      {message ? <div className="banner success">{message}</div> : null}
+      {error ? <div className="banner error">{error}</div> : null}
+
+      <div className="flow-editor-layout">
+        <section className="panel editor-sidebar">
+          <div className="panel-header">
+            <h3>Definition</h3>
+            <span>{draftModel?.revision ?? 0}</span>
+          </div>
+
+          <div className="form-grid compact">
+            <label>
+              <span>Name</span>
+              <input value={meta.name} onChange={(event) => setMeta((current) => ({ ...current, name: event.target.value }))} />
+            </label>
+            <label className="wide">
+              <span>Description</span>
+              <textarea rows={3} value={meta.description} onChange={(event) => setMeta((current) => ({ ...current, description: event.target.value }))} />
+            </label>
+          </div>
+
+          <div className="library-section">
+            <div className="panel-header">
+              <h4>Node library</h4>
+              <span>Local + catalog</span>
+            </div>
+            <div className="stack-list">
+              {LOCAL_OPERATION_LIBRARY.map((template) => (
+                <button key={template.key} type="button" className="list-item-button" onClick={() => setNodes((current) => addOperationNode(current, template))}>
+                  <div>
+                    <strong>{template.name}</strong>
+                    <p>{template.consoleId}</p>
+                  </div>
+                  <Plus size={16} />
+                </button>
+              ))}
+              {catalog?.subFlowTemplates.map((template) => (
+                <button key={template.runtimeFlowId} type="button" className="list-item-button" onClick={() => setNodes((current) => addSubFlowNode(current, template))}>
+                  <div>
+                    <strong>{template.name}</strong>
+                    <p>{template.code}</p>
+                  </div>
+                  <Plus size={16} />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="library-section">
+            <div className="panel-header">
+              <h4>Variables</h4>
+              <button className="icon-button" type="button" onClick={addVariable}>
+                <Plus size={16} />
+              </button>
+            </div>
+            <div className="variable-list">
+              {variables.map((variable, index) => (
+                <div key={`${variable.id}-${index}`} className="variable-row">
+                  <input
+                    value={variable.id}
+                    onChange={(event) =>
+                      setVariables((current) =>
+                        current.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, id: event.target.value } : item,
+                        ),
+                      )
+                    }
+                  />
+                  <select
+                    value={variable.type}
+                    onChange={(event) =>
+                      setVariables((current) =>
+                        current.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, type: event.target.value } : item,
+                        ),
+                      )
+                    }
+                  >
+                    {['string', 'bool', 'int', 'long', 'float'].map((type) => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={variable.usage}
+                    onChange={(event) =>
+                      setVariables((current) =>
+                        current.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, usage: event.target.value as DraftVariable['usage'] } : item,
+                        ),
+                      )
+                    }
+                  >
+                    <option value="input">input</option>
+                    <option value="output">output</option>
+                    <option value="inputOutput">inputOutput</option>
+                  </select>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="panel canvas-panel">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={(connection) => setEdges((current) => connectEdges(current, connection))}
+            onNodeClick={(_, node) => setSelectedNodeId(node.id === ROOT_NODE_ID ? null : node.id)}
+            fitView
+          >
+            <MiniMap />
+            <Controls />
+            <Background />
+          </ReactFlow>
+        </section>
+
+        <section className="panel inspector-panel">
+          <div className="panel-header">
+            <h3>Inspector</h3>
+            {selectedNode ? (
+              <button className="icon-button" type="button" onClick={removeSelectedNode}>
+                <Trash2 size={16} />
+              </button>
+            ) : null}
+          </div>
+
+          {selectedNode ? (
+            <>
+              <div className="form-grid compact">
+                <label>
+                  <span>Node id</span>
+                  <input
+                    value={selectedNode.id}
+                    onChange={(event) =>
+                      setNodes((current) =>
+                        current.map((node) =>
+                          node.id === selectedNode.id
+                            ? { ...node, id: event.target.value, data: { ...node.data, label: event.target.value } }
+                            : node,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <label>
+                  <span>Description</span>
+                  <input
+                    value={selectedNode.data.description}
+                    onChange={(event) => updateSelectedNode({ description: event.target.value })}
+                  />
+                </label>
+                {selectedNode.data.kind === 'operation' ? (
+                  <>
+                    <label>
+                      <span>Console</span>
+                      <input
+                        value={selectedNode.data.consoleId}
+                        onChange={(event) => updateSelectedNode({ consoleId: event.target.value })}
+                      />
+                    </label>
+                    <label className="wide">
+                      <span>Operation task type</span>
+                      <input
+                        value={selectedNode.data.operationTaskType}
+                        onChange={(event) => updateSelectedNode({ operationTaskType: event.target.value })}
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <label className="wide">
+                    <span>Runtime flow id</span>
+                    <input
+                      value={selectedNode.data.flowId}
+                      onChange={(event) => updateSelectedNode({ flowId: event.target.value })}
+                    />
+                  </label>
+                )}
+              </div>
+
+              <div className="library-section">
+                <div className="panel-header">
+                  <h4>Input bindings</h4>
+                  <button className="icon-button" type="button" onClick={() => appendNodeBinding('inputs')}>
+                    <Plus size={16} />
+                  </button>
+                </div>
+                {selectedNode.data.inputs.length > 0 ? selectedNode.data.inputs.map((binding, index) => (
+                  <div key={`${binding.destination}-${index}`} className="binding-row">
+                    <input
+                      value={binding.source}
+                      onChange={(event) => updateBindings('inputs', index, 'source', event.target.value)}
+                    />
+                    <input
+                      value={binding.destination}
+                      onChange={(event) => updateBindings('inputs', index, 'destination', event.target.value)}
+                    />
+                    <button
+                      className="icon-button"
+                      type="button"
+                      onClick={() => removeNodeBinding('inputs', index)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                )) : <div className="empty-panel compact">No input bindings yet.</div>}
+              </div>
+
+              <div className="library-section">
+                <div className="panel-header">
+                  <h4>Output bindings</h4>
+                  <button className="icon-button" type="button" onClick={() => appendNodeBinding('outputs')}>
+                    <Plus size={16} />
+                  </button>
+                </div>
+                {selectedNode.data.outputs.length > 0 ? selectedNode.data.outputs.map((binding, index) => (
+                  <div key={`${binding.source}-${index}`} className="binding-row">
+                    <input
+                      value={binding.source}
+                      onChange={(event) => updateBindings('outputs', index, 'source', event.target.value)}
+                    />
+                    <input
+                      value={binding.destination}
+                      onChange={(event) => updateBindings('outputs', index, 'destination', event.target.value)}
+                    />
+                    <button
+                      className="icon-button"
+                      type="button"
+                      onClick={() => removeNodeBinding('outputs', index)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                )) : <div className="empty-panel compact">No output bindings yet.</div>}
+              </div>
+            </>
+          ) : (
+            <div className="empty-panel">
+              <AlertTriangle size={20} />
+              <span>Select a node on the canvas to edit bindings and task metadata.</span>
+            </div>
+          )}
+
+          <div className="library-section">
+            <div className="panel-header">
+              <h4>Navigation</h4>
+            </div>
+            <button className="secondary-button" type="button" onClick={() => navigate('/flows')}>
+              <Link2 size={16} />
+              <span>Back to definitions</span>
+            </button>
+          </div>
+        </section>
+      </div>
+    </div>
+  )
+}
