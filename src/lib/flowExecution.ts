@@ -39,6 +39,11 @@ export interface ExecutableActionSet {
   nodeActions: ExecutableAction[]
 }
 
+type ActionableExecutable = Pick<
+  ExecutableDetailModel,
+  'id' | 'executableType' | 'status' | 'parentFlowTaskId' | 'acknowledged'
+>
+
 export function createSuggestedOrderCode(kind: OrderKind, when = new Date()): string {
   const prefix = kind === 'inbound' ? 'IN' : 'OUT'
   const yyyy = when.getFullYear()
@@ -122,7 +127,7 @@ export function applyOrderTaskSnapshots<T extends {
 
 export function getExecutableActions(
   task: FlowTaskDetail | null,
-  selectedNode: Pick<ExecutableDetailModel, 'id' | 'executableType' | 'status' | 'parentFlowTaskId' | 'acknowledged'> | null,
+  selectedNode: ActionableExecutable | null,
 ): ExecutableActionSet {
   const flowActions =
     task && !isTerminalFlowTaskStatus(task.status)
@@ -138,7 +143,7 @@ export function getExecutableActions(
   ) {
     return {
       flowActions,
-      nodeActions: ['retry'],
+      nodeActions: ['retry', 'skip'],
     }
   }
 
@@ -159,7 +164,7 @@ export function getExecutableActions(
   if (selectedNode.executableType === 0 || selectedNode.executableType === 1) {
     return {
       flowActions,
-      nodeActions: ['cancel', 'skip'],
+      nodeActions: ['cancel'],
     }
   }
 
@@ -167,6 +172,45 @@ export function getExecutableActions(
     flowActions,
     nodeActions: [],
   }
+}
+
+export function getExecutableActionHint(
+  task: FlowTaskDetail | null,
+  selectedNode: ActionableExecutable | null,
+): string | null {
+  if (!selectedNode) {
+    return null
+  }
+
+  if (selectedNode.status === 4) {
+    return 'Completed nodes do not support retry or skip.'
+  }
+
+  if (selectedNode.acknowledged) {
+    return 'This node has already been acknowledged by the parent flow.'
+  }
+
+  if (!selectedNode.parentFlowTaskId) {
+    return null
+  }
+
+  if (task?.status !== 3) {
+    return 'Node actions are available only while the parent flow is still running.'
+  }
+
+  if (selectedNode.status === 3) {
+    return 'This node can be canceled while it is running.'
+  }
+
+  if (selectedNode.status === 6) {
+    return 'This node can be retried or skipped after it fails.'
+  }
+
+  if (selectedNode.status === 8) {
+    return 'This node can be retried or skipped after it is canceled.'
+  }
+
+  return null
 }
 
 export function buildExecutionGraph(task: FlowTaskDetail | null): {

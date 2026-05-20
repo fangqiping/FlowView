@@ -1,5 +1,6 @@
 import { Boxes, ClipboardList, GitBranchPlus, PackageOpen } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { API_BASE_URL } from '../lib/api'
 
 const navItems = [
   { to: '/orders/inbound', label: 'Inbound Orders', icon: ClipboardList },
@@ -9,6 +10,8 @@ const navItems = [
 ]
 
 export function AppShell() {
+  const backendLabel = getBackendLabel(API_BASE_URL)
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -35,7 +38,7 @@ export function AppShell() {
 
         <div className="sidebar-footer">
           <div className="status-dot online" />
-          <span>Backend 127.0.0.1:5086</span>
+          <span>Backend {backendLabel}</span>
         </div>
       </aside>
 
@@ -44,4 +47,12 @@ export function AppShell() {
       </main>
     </div>
   )
+}
+
+function getBackendLabel(url: string) {
+  try {
+    return new URL(url).host
+  } catch {
+    return url
+  }
 }

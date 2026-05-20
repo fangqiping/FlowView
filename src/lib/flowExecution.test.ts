@@ -5,6 +5,7 @@ import {
   buildExecutionGraph,
   createSuggestedOrderCode,
   getExecutableActions,
+  getExecutableActionHint,
   getEffectiveOrderSnapshot,
   getExecutionSteps,
   toTaskSnapshot,
@@ -138,7 +139,7 @@ describe('flowExecution helpers', () => {
     ])
   })
 
-  it('returns root cancel and node actions for active operation tasks', () => {
+  it('returns only cancel for active operation tasks', () => {
     const task: FlowTaskDetail = {
       id: 20,
       executableType: 1,
@@ -157,11 +158,12 @@ describe('flowExecution helpers', () => {
 
     expect(getExecutableActions(task, selectedNode)).toEqual({
       flowActions: ['cancel'],
-      nodeActions: ['cancel', 'skip'],
+      nodeActions: ['cancel'],
     })
+    expect(getExecutableActionHint(task, selectedNode)).toBe('This node can be canceled while it is running.')
   })
 
-  it('returns retry for failed child executables', () => {
+  it('returns retry and skip for failed child executables', () => {
     const task: FlowTaskDetail = {
       id: 20,
       executableType: 1,
@@ -180,8 +182,33 @@ describe('flowExecution helpers', () => {
 
     expect(getExecutableActions(task, selectedNode)).toEqual({
       flowActions: ['cancel'],
-      nodeActions: ['retry'],
+      nodeActions: ['retry', 'skip'],
     })
+    expect(getExecutableActionHint(task, selectedNode)).toBe('This node can be retried or skipped after it fails.')
+  })
+
+  it('returns retry and skip for canceled child executables', () => {
+    const task: FlowTaskDetail = {
+      id: 20,
+      executableType: 1,
+      flowId: 'db:inbound-basic:v1',
+      acknowledged: true,
+      status: 3,
+    }
+    const selectedNode = {
+      executableType: 0,
+      id: 23,
+      parentFlowTaskId: 20,
+      nodeId: 'Receive',
+      acknowledged: false,
+      status: 8,
+    }
+
+    expect(getExecutableActions(task, selectedNode)).toEqual({
+      flowActions: ['cancel'],
+      nodeActions: ['retry', 'skip'],
+    })
+    expect(getExecutableActionHint(task, selectedNode)).toBe('This node can be retried or skipped after it is canceled.')
   })
 
   it('hides retry after a canceled child has already been acknowledged by a finished flow', () => {
@@ -205,6 +232,7 @@ describe('flowExecution helpers', () => {
       flowActions: [],
       nodeActions: [],
     })
+    expect(getExecutableActionHint(task, selectedNode)).toBe('This node has already been acknowledged by the parent flow.')
   })
 
   it('returns no actions for completed child executables', () => {
@@ -228,5 +256,6 @@ describe('flowExecution helpers', () => {
       flowActions: [],
       nodeActions: [],
     })
+    expect(getExecutableActionHint(task, selectedNode)).toBe('Completed nodes do not support retry or skip.')
   })
 })

@@ -478,6 +478,13 @@ textarea:focus {
   margin: 0 0 12px;
 }
 
+.execution-action-hint {
+  margin: 0 18px 6px;
+  color: #90a0bb;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
 .line-list ul,
 .stack-list,
 .version-list,

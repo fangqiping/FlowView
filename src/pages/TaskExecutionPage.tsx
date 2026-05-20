@@ -6,7 +6,12 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { FlowTaskStatusPill } from '../components/StatusPill'
 import { PageHeader } from '../components/PageHeader'
 import { api } from '../lib/api'
-import { buildExecutionGraph, getExecutableActions, type ExecutableAction } from '../lib/flowExecution'
+import {
+  buildExecutionGraph,
+  getExecutableActionHint,
+  getExecutableActions,
+  type ExecutableAction,
+} from '../lib/flowExecution'
 import { useOrderTaskDetail } from '../lib/useOrderTaskDetail'
 
 export function TaskExecutionPage() {
@@ -37,6 +42,7 @@ function TaskExecutionWorkspace() {
   const selectedNode = graph.nodes.find((node) => node.id === activeSelectedNodeId) ?? graph.nodes[0] ?? null
   const selectedDetail = selectedNode?.data.detail ?? null
   const actionSet = useMemo(() => getExecutableActions(task, selectedDetail), [task, selectedDetail])
+  const actionHint = useMemo(() => getExecutableActionHint(task, selectedDetail), [task, selectedDetail])
 
   async function runFlowAction(action: ExecutableAction) {
     if (!task) {
@@ -225,6 +231,10 @@ function TaskExecutionWorkspace() {
                     />
                   ))}
                 </div>
+              ) : null}
+
+              {actionHint ? (
+                <p className="execution-action-hint">{actionHint}</p>
               ) : null}
 
               {task?.variableEntities?.length ? (
