@@ -41,7 +41,7 @@ export interface ExecutableActionSet {
 
 type ActionableExecutable = Pick<
   ExecutableDetailModel,
-  'id' | 'executableType' | 'status' | 'parentFlowTaskId' | 'acknowledged' | 'availableActions'
+  'id' | 'nodeId' | 'executableType' | 'status' | 'parentFlowTaskId' | 'acknowledged' | 'availableActions'
 >
 
 export function createSuggestedOrderCode(kind: OrderKind, when = new Date()): string {
@@ -251,6 +251,34 @@ export function buildExecutionGraph(task: FlowTaskDetail | null): {
   }))
 
   return { nodes, edges }
+}
+
+export function findReplacementExecutableId(
+  task: FlowTaskDetail | null,
+  previousNode: Pick<ActionableExecutable, 'id' | 'executableType' | 'parentFlowTaskId' | 'nodeId'> | null,
+): number | null {
+  if (!task || !previousNode?.nodeId) {
+    return null
+  }
+
+  const candidates = task.executableDetailModels?.filter((detail) =>
+    detail.id !== previousNode.id
+    && detail.executableType === previousNode.executableType
+    && detail.parentFlowTaskId === previousNode.parentFlowTaskId
+    && detail.nodeId === previousNode.nodeId
+    && !detail.acknowledged,
+  ) ?? []
+
+  if (!candidates.length) {
+    return null
+  }
+
+  return [...candidates]
+    .sort((left, right) => {
+      const leftTime = Date.parse(left.scheduledTime ?? '') || 0
+      const rightTime = Date.parse(right.scheduledTime ?? '') || 0
+      return rightTime - leftTime
+    })[0]?.id ?? null
 }
 
 function toExecutionStep(detail: ExecutableDetailModel): ExecutionStep {

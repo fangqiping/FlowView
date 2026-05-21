@@ -4,6 +4,7 @@ import {
   applyOrderTaskSnapshots,
   buildExecutionGraph,
   createSuggestedOrderCode,
+  findReplacementExecutableId,
   getExecutableActions,
   getExecutableActionHint,
   getEffectiveOrderSnapshot,
@@ -335,5 +336,92 @@ describe('flowExecution helpers', () => {
       nodeActions: [],
     })
     expect(getExecutableActionHint(task, selectedNode)).toBe('Completed nodes do not support retry or skip.')
+  })
+
+  it('finds the replacement executable created by retrying a node', () => {
+    const task: FlowTaskDetail = {
+      id: 30,
+      executableType: 1,
+      flowId: 'db:inbound-basic:v1',
+      acknowledged: true,
+      status: 3,
+      executableDetailModels: [
+        {
+          executableType: 0,
+          id: 101,
+          parentFlowTaskId: 30,
+          nodeId: 'Receive',
+          acknowledged: true,
+          status: 8,
+          scheduledTime: '2026-05-21T23:10:00+08:00',
+        },
+        {
+          executableType: 0,
+          id: 102,
+          parentFlowTaskId: 30,
+          nodeId: 'Receive',
+          acknowledged: false,
+          status: 3,
+          scheduledTime: '2026-05-21T23:10:05+08:00',
+        },
+      ],
+    }
+
+    expect(
+      findReplacementExecutableId(task, {
+        executableType: 0,
+        id: 101,
+        parentFlowTaskId: 30,
+        nodeId: 'Receive',
+      }),
+    ).toBe(102)
+  })
+
+  it('does not treat acknowledged or mismatched nodes as retry replacements', () => {
+    const task: FlowTaskDetail = {
+      id: 30,
+      executableType: 1,
+      flowId: 'db:inbound-basic:v1',
+      acknowledged: true,
+      status: 3,
+      executableDetailModels: [
+        {
+          executableType: 0,
+          id: 201,
+          parentFlowTaskId: 30,
+          nodeId: 'Receive',
+          acknowledged: true,
+          status: 8,
+          scheduledTime: '2026-05-21T23:10:00+08:00',
+        },
+        {
+          executableType: 0,
+          id: 202,
+          parentFlowTaskId: 30,
+          nodeId: 'Store',
+          acknowledged: false,
+          status: 3,
+          scheduledTime: '2026-05-21T23:10:05+08:00',
+        },
+        {
+          executableType: 0,
+          id: 203,
+          parentFlowTaskId: 30,
+          nodeId: 'Receive',
+          acknowledged: true,
+          status: 3,
+          scheduledTime: '2026-05-21T23:10:06+08:00',
+        },
+      ],
+    }
+
+    expect(
+      findReplacementExecutableId(task, {
+        executableType: 0,
+        id: 201,
+        parentFlowTaskId: 30,
+        nodeId: 'Receive',
+      }),
+    ).toBeNull()
   })
 })

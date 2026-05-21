@@ -8,6 +8,7 @@ import { PageHeader } from '../components/PageHeader'
 import { api } from '../lib/api'
 import {
   buildExecutionGraph,
+  findReplacementExecutableId,
   getExecutableActionHint,
   getExecutableActions,
   type ExecutableAction,
@@ -78,7 +79,13 @@ function TaskExecutionWorkspace() {
       } else {
         await api.operationTaskAction(selectedDetail.id, apiAction)
       }
-      await refresh()
+      const nextTask = await refresh()
+      if (action === 'retry' && nextTask) {
+        const replacementExecutableId = findReplacementExecutableId(nextTask, selectedDetail)
+        if (replacementExecutableId != null) {
+          setSelectedNodeId(`step-${replacementExecutableId}`)
+        }
+      }
       setMessage(`Node ${selectedDetail.nodeId ?? selectedDetail.id} ${action} requested.`)
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : `Failed to ${action} node.`)
