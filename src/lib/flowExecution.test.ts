@@ -163,6 +163,56 @@ describe('flowExecution helpers', () => {
     expect(getExecutableActionHint(task, selectedNode)).toBe('This node can be canceled while it is running.')
   })
 
+  it('prefers server-provided available actions for child executables', () => {
+    const task: FlowTaskDetail = {
+      id: 20,
+      executableType: 1,
+      flowId: 'db:inbound-basic:v1',
+      acknowledged: true,
+      status: 3,
+      availableActions: ['cancel'],
+    }
+    const selectedNode = {
+      executableType: 0,
+      id: 21,
+      parentFlowTaskId: 20,
+      nodeId: 'Receive',
+      acknowledged: false,
+      status: 3,
+      availableActions: ['restart', 'skip'],
+    }
+
+    expect(getExecutableActions(task, selectedNode)).toEqual({
+      flowActions: ['cancel'],
+      nodeActions: ['retry', 'skip'],
+    })
+  })
+
+  it('hides child actions when the server returns no available actions', () => {
+    const task: FlowTaskDetail = {
+      id: 20,
+      executableType: 1,
+      flowId: 'db:inbound-basic:v1',
+      acknowledged: true,
+      status: 3,
+      availableActions: ['cancel'],
+    }
+    const selectedNode = {
+      executableType: 0,
+      id: 21,
+      parentFlowTaskId: 20,
+      nodeId: 'Receive',
+      acknowledged: false,
+      status: 3,
+      availableActions: [],
+    }
+
+    expect(getExecutableActions(task, selectedNode)).toEqual({
+      flowActions: ['cancel'],
+      nodeActions: [],
+    })
+  })
+
   it('returns retry and skip for failed child executables', () => {
     const task: FlowTaskDetail = {
       id: 20,

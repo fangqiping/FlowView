@@ -220,6 +220,7 @@ export interface ExecutableDetailModel {
   id: number
   parentFlowTaskId?: number | null
   nodeId?: string | null
+  availableActions?: string[]
   acknowledged: boolean
   status: number
   errorMessage?: string | null

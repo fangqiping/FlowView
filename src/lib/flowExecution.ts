@@ -41,7 +41,7 @@ export interface ExecutableActionSet {
 
 type ActionableExecutable = Pick<
   ExecutableDetailModel,
-  'id' | 'executableType' | 'status' | 'parentFlowTaskId' | 'acknowledged'
+  'id' | 'executableType' | 'status' | 'parentFlowTaskId' | 'acknowledged' | 'availableActions'
 >
 
 export function createSuggestedOrderCode(kind: OrderKind, when = new Date()): string {
@@ -129,10 +129,21 @@ export function getExecutableActions(
   task: FlowTaskDetail | null,
   selectedNode: ActionableExecutable | null,
 ): ExecutableActionSet {
-  const flowActions =
-    task && !isTerminalFlowTaskStatus(task.status)
-      ? (['cancel'] as ExecutableAction[])
-      : []
+  const flowActions = task
+    ? getDeclaredExecutableActions(task.availableActions)
+      ?? (!isTerminalFlowTaskStatus(task.status) ? (['cancel'] as ExecutableAction[]) : [])
+    : []
+
+  const declaredNodeActions = selectedNode
+    ? getDeclaredExecutableActions(selectedNode.availableActions)
+    : null
+
+  if (declaredNodeActions) {
+    return {
+      flowActions,
+      nodeActions: declaredNodeActions,
+    }
+  }
 
   if (
     selectedNode
@@ -247,6 +258,25 @@ function toExecutionStep(detail: ExecutableDetailModel): ExecutionStep {
     startingTime: detail.startingTime,
     finishedTime: detail.finishedTime,
   }
+}
+
+function getDeclaredExecutableActions(availableActions?: string[] | null): ExecutableAction[] | null {
+  if (!availableActions) {
+    return null
+  }
+
+  return availableActions.flatMap((action) => {
+    switch (action) {
+      case 'cancel':
+        return ['cancel']
+      case 'skip':
+        return ['skip']
+      case 'restart':
+        return ['retry']
+      default:
+        return []
+    }
+  })
 }
 
 export function isTerminalFlowTaskStatus(status: number) {
