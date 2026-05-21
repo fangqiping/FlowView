@@ -281,6 +281,32 @@ export function findReplacementExecutableId(
     })[0]?.id ?? null
 }
 
+export function findNextExecutableIdAfterSkip(
+  task: FlowTaskDetail | null,
+  previousNode: Pick<ActionableExecutable, 'id' | 'parentFlowTaskId'> | null,
+): number | null {
+  if (!task || !previousNode) {
+    return null
+  }
+
+  const candidates = task.executableDetailModels?.filter((detail) =>
+    detail.id !== previousNode.id
+    && detail.parentFlowTaskId === previousNode.parentFlowTaskId
+    && !detail.acknowledged,
+  ) ?? []
+
+  if (!candidates.length) {
+    return null
+  }
+
+  return [...candidates]
+    .sort((left, right) => {
+      const leftTime = Date.parse(left.scheduledTime ?? '') || 0
+      const rightTime = Date.parse(right.scheduledTime ?? '') || 0
+      return rightTime - leftTime
+    })[0]?.id ?? null
+}
+
 function toExecutionStep(detail: ExecutableDetailModel): ExecutionStep {
   return {
     id: detail.id,

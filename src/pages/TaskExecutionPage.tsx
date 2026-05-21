@@ -8,6 +8,7 @@ import { PageHeader } from '../components/PageHeader'
 import { api } from '../lib/api'
 import {
   buildExecutionGraph,
+  findNextExecutableIdAfterSkip,
   findReplacementExecutableId,
   getExecutableActionHint,
   getExecutableActions,
@@ -84,6 +85,12 @@ function TaskExecutionWorkspace() {
         const replacementExecutableId = findReplacementExecutableId(nextTask, selectedDetail)
         if (replacementExecutableId != null) {
           setSelectedNodeId(`step-${replacementExecutableId}`)
+        }
+      }
+      if (action === 'skip' && nextTask) {
+        const nextExecutableId = findNextExecutableIdAfterSkip(nextTask, selectedDetail)
+        if (nextExecutableId != null) {
+          setSelectedNodeId(`step-${nextExecutableId}`)
         }
       }
       setMessage(`Node ${selectedDetail.nodeId ?? selectedDetail.id} ${action} requested.`)

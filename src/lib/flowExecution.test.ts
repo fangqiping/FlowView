@@ -4,6 +4,7 @@ import {
   applyOrderTaskSnapshots,
   buildExecutionGraph,
   createSuggestedOrderCode,
+  findNextExecutableIdAfterSkip,
   findReplacementExecutableId,
   getExecutableActions,
   getExecutableActionHint,
@@ -421,6 +422,71 @@ describe('flowExecution helpers', () => {
         id: 201,
         parentFlowTaskId: 30,
         nodeId: 'Receive',
+      }),
+    ).toBeNull()
+  })
+
+  it('finds the next unacknowledged executable after skipping a node', () => {
+    const task: FlowTaskDetail = {
+      id: 40,
+      executableType: 1,
+      flowId: 'db:inbound-basic:v1',
+      acknowledged: true,
+      status: 3,
+      executableDetailModels: [
+        {
+          executableType: 0,
+          id: 301,
+          parentFlowTaskId: 40,
+          nodeId: 'Receive',
+          acknowledged: true,
+          status: 8,
+          scheduledTime: '2026-05-21T23:30:00+08:00',
+        },
+        {
+          executableType: 0,
+          id: 302,
+          parentFlowTaskId: 40,
+          nodeId: 'Store',
+          acknowledged: false,
+          status: 3,
+          scheduledTime: '2026-05-21T23:30:05+08:00',
+        },
+      ],
+    }
+
+    expect(
+      findNextExecutableIdAfterSkip(task, {
+        id: 301,
+        parentFlowTaskId: 40,
+      }),
+    ).toBe(302)
+  })
+
+  it('returns null when skipping the last node completes the flow', () => {
+    const task: FlowTaskDetail = {
+      id: 41,
+      executableType: 1,
+      flowId: 'db:inbound-basic:v1',
+      acknowledged: true,
+      status: 4,
+      executableDetailModels: [
+        {
+          executableType: 0,
+          id: 401,
+          parentFlowTaskId: 41,
+          nodeId: 'Store',
+          acknowledged: true,
+          status: 8,
+          scheduledTime: '2026-05-21T23:31:00+08:00',
+        },
+      ],
+    }
+
+    expect(
+      findNextExecutableIdAfterSkip(task, {
+        id: 401,
+        parentFlowTaskId: 41,
       }),
     ).toBeNull()
   })
