@@ -134,6 +134,13 @@ export function getExecutableActions(
       ?? (!isTerminalFlowTaskStatus(task.status) ? (['cancel'] as ExecutableAction[]) : [])
     : []
 
+  if (selectedNode && task && task.status !== 3) {
+    return {
+      flowActions,
+      nodeActions: [],
+    }
+  }
+
   const declaredNodeActions = selectedNode
     ? getDeclaredExecutableActions(selectedNode.availableActions)
     : null

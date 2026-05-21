@@ -213,6 +213,34 @@ describe('flowExecution helpers', () => {
     })
   })
 
+  it('hides child actions when the parent flow is no longer running even if stale actions are present', () => {
+    const task: FlowTaskDetail = {
+      id: 20,
+      executableType: 1,
+      flowId: 'db:inbound-basic:v1',
+      acknowledged: true,
+      status: 8,
+      availableActions: [],
+    }
+    const selectedNode = {
+      executableType: 0,
+      id: 21,
+      parentFlowTaskId: 20,
+      nodeId: 'Receive',
+      acknowledged: false,
+      status: 3,
+      availableActions: ['cancel'],
+    }
+
+    expect(getExecutableActions(task, selectedNode)).toEqual({
+      flowActions: [],
+      nodeActions: [],
+    })
+    expect(getExecutableActionHint(task, selectedNode)).toBe(
+      'Node actions are available only while the parent flow is still running.',
+    )
+  })
+
   it('returns retry and skip for failed child executables', () => {
     const task: FlowTaskDetail = {
       id: 20,
