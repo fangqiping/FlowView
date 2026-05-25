@@ -1,6 +1,7 @@
 import { LoaderCircle, Play, Plus, RefreshCcw, Rocket, SendHorizonal, SquareCheckBig, XCircle } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ResourceSummaryPanel } from '../components/ResourceSummaryPanel'
 import { api } from '../lib/api'
 import {
   applyOrderTaskSnapshots,
@@ -9,6 +10,7 @@ import {
   isTerminalFlowTaskStatus,
   toTaskSnapshot,
 } from '../lib/flowExecution'
+import { buildOrderResourceSummary } from '../lib/resourceSummary'
 import { useOrderTaskDetail } from '../lib/useOrderTaskDetail'
 import { PageHeader } from '../components/PageHeader'
 import { FlowTaskStatusPill, StatusPill } from '../components/StatusPill'
@@ -19,6 +21,7 @@ import type {
   LocationModel,
   OrderKind,
   OutboundOrderModel,
+  PalletModel,
   SkuModel,
 } from '../types'
 
@@ -28,6 +31,7 @@ export function OrdersPage({ kind }: { kind: OrderKind }) {
   const [orders, setOrders] = useState<OrderModel[]>([])
   const [skus, setSkus] = useState<SkuModel[]>([])
   const [locations, setLocations] = useState<LocationModel[]>([])
+  const [pallets, setPallets] = useState<PalletModel[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [busyAction, setBusyAction] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -69,6 +73,10 @@ export function OrdersPage({ kind }: { kind: OrderKind }) {
     [displayOrders, selectedId],
   )
   const executionSteps = useMemo(() => getExecutionSteps(selectedTask), [selectedTask])
+  const resourceSummary = useMemo(
+    () => buildOrderResourceSummary(kind, selectedOrder, selectedTask, locations, pallets, skus),
+    [kind, selectedOrder, selectedTask, locations, pallets, skus],
+  )
 
   useEffect(() => {
     void loadPage()
@@ -95,14 +103,16 @@ export function OrdersPage({ kind }: { kind: OrderKind }) {
     try {
       setError(null)
       setMessage(null)
-      const [skuResponse, locationResponse, orderResponse] = await Promise.all([
+      const [skuResponse, locationResponse, palletResponse, orderResponse] = await Promise.all([
         api.getSkus(),
         api.getLocations(),
+        api.getPallets(),
         kind === 'inbound' ? api.getInboundOrders() : api.getOutboundOrders(),
       ])
 
       setSkus(skuResponse.items)
       setLocations(locationResponse.items)
+      setPallets(palletResponse.items)
       setOrders(orderResponse.items)
 
       const defaultRack =
@@ -469,6 +479,8 @@ export function OrdersPage({ kind }: { kind: OrderKind }) {
                     ))}
                   </ul>
                 </div>
+
+                {resourceSummary ? <ResourceSummaryPanel summary={resourceSummary} /> : null}
 
                 <div className="line-list">
                   <h4>Execution steps</h4>
