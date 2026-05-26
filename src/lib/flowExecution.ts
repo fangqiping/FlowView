@@ -44,6 +44,14 @@ type ActionableExecutable = Pick<
   'id' | 'nodeId' | 'executableType' | 'status' | 'parentFlowTaskId' | 'acknowledged' | 'availableActions'
 >
 
+export function getExecutionNodeKindLabel(detail: Pick<ActionableExecutable, 'nodeId'> | null | undefined) {
+  if (detail?.nodeId?.startsWith('Acquire')) {
+    return 'Resource acquire'
+  }
+
+  return 'Operation node'
+}
+
 export function createSuggestedOrderCode(kind: OrderKind, when = new Date()): string {
   const prefix = kind === 'inbound' ? 'IN' : 'OUT'
   const yyyy = when.getFullYear()

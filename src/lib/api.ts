@@ -14,6 +14,8 @@ import type {
   OutboundOrderModel,
   PublishFlowVersionModel,
   PutFlowDraftModel,
+  PalletModel,
+  PortModel,
   SkuModel,
 } from '../types'
 
@@ -95,6 +97,14 @@ export const api = {
 
   async getLocations() {
     return request<ContentResponse<LocationModel>>('/api/Locations?ShouldPaginate=false')
+  },
+
+  async getPorts() {
+    return request<ContentResponse<PortModel>>('/api/Ports?ShouldPaginate=false')
+  },
+
+  async getPallets() {
+    return request<ContentResponse<PalletModel>>('/api/Pallets?ShouldPaginate=false')
   },
 
   async getFlowCatalog() {

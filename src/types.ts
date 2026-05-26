@@ -84,8 +84,33 @@ export interface LocationModel {
   id: number
   code: string
   name: string
+  enabled: boolean
+  acquired: boolean
   locationType: number
+  status: number
   warehouseId: number
+  currentPalletId?: number | null
+}
+
+export interface PortModel {
+  id: number
+  code: string
+  name: string
+  enabled: boolean
+  acquired: boolean
+  portType: number
+  status: number
+  warehouseId: number
+  currentPalletId?: number | null
+}
+
+export interface PalletModel {
+  id: number
+  code: string
+  enabled: boolean
+  acquired: boolean
+  skuId: number
+  quantity: number
 }
 
 export interface SkuModel {
@@ -213,6 +238,25 @@ export interface VariableEntityModel {
 
 export interface ResourceDetailModel {
   id?: string | number
+  resourceType?: string | null
+  resourceId?: string | null
+}
+
+export interface ResourceSummaryField {
+  label: string
+  value: string
+}
+
+export interface ExecutionResourceTransition {
+  before?: string | null
+  after?: string | null
+}
+
+export interface ResourceSummaryCard {
+  title: string
+  fields: ResourceSummaryField[]
+  ruleMatch?: string | null
+  transition?: ExecutionResourceTransition | null
 }
 
 export interface ExecutableDetailModel {

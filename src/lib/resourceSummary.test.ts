@@ -1,0 +1,275 @@
+import { describe, expect, it } from 'vitest'
+import type { FlowTaskDetail, LocationModel, PalletModel, PortModel, SkuModel } from '../types'
+import {
+  buildExecutionResourceSummary,
+  buildOrderResourceSummary,
+  toSelectionSourceLabel,
+} from './resourceSummary'
+
+describe('resourceSummary helpers', () => {
+  const locations: LocationModel[] = [
+    {
+      id: 2,
+      code: 'RACK-A1',
+      name: 'Rack A1',
+      enabled: true,
+      acquired: false,
+      locationType: 1,
+      status: 1,
+      warehouseId: 1,
+      currentPalletId: 2,
+    },
+    {
+      id: 3,
+      code: 'RACK-A2',
+      name: 'Rack A2',
+      enabled: true,
+      acquired: true,
+      locationType: 1,
+      status: 2,
+      warehouseId: 1,
+      currentPalletId: 1,
+    },
+  ]
+
+  const pallets: PalletModel[] = [
+    { id: 1, code: 'PLT-SEED-RACK-A2', enabled: true, acquired: true, skuId: 1, quantity: 1 },
+    { id: 2, code: 'PLT-IN-0001', enabled: true, acquired: false, skuId: 1, quantity: 1 },
+  ]
+
+  const ports: PortModel[] = [
+    { id: 1, code: 'IN-PORT-01', name: 'Inbound Port 01', enabled: true, acquired: true, portType: 1, status: 3, warehouseId: 1, currentPalletId: null },
+    { id: 2, code: 'OUT-PORT-01', name: 'Outbound Port 01', enabled: true, acquired: false, portType: 2, status: 1, warehouseId: 1, currentPalletId: null },
+  ]
+
+  const skus: SkuModel[] = [{ id: 1, code: 'SKU-001', name: 'Demo Tote', spec: 'Blue / 600x400' }]
+
+  it('returns fallback when requested and resolved locations differ', () => {
+    expect(toSelectionSourceLabel('RACK-A1', 'RACK-A2')).toBe('Fallback rule match')
+    expect(toSelectionSourceLabel('RACK-A1', 'RACK-A1')).toBe('Preferred location')
+  })
+
+  it('builds an outbound order summary with fallback resolution and lock state', () => {
+    const task: FlowTaskDetail = {
+      id: 10,
+      executableType: 1,
+      flowId: 'db:outbound-basic:v1',
+      acknowledged: true,
+      status: 3,
+      variableEntities: [
+        { id: 'SourceLocationCode', value: '"RACK-A2"' },
+        { id: 'SourcePalletId', value: '1' },
+        { id: 'SkuCode', value: '"SKU-001"' },
+      ],
+      resourceDetails: [
+        { id: 1, resourceType: 'Backend.Demo.Domain.Location', resourceId: '3' },
+        { id: 2, resourceType: 'Backend.Demo.Domain.Pallet', resourceId: '1' },
+      ],
+      executableDetailModels: [],
+    }
+
+    const summary = buildOrderResourceSummary(
+      'outbound',
+      {
+        id: 1,
+        code: 'OUT-1',
+        status: 3,
+        destination: 'OUT-01',
+        lines: [{ id: 1, skuId: 1, quantity: 1, sourceLocationId: 2 }],
+      },
+      task,
+      locations,
+      ports,
+      pallets,
+      skus,
+    )
+
+    expect(summary?.fields.find((field) => field.label === 'Requested Location')?.value).toBe('RACK-A1')
+    expect(summary?.fields.find((field) => field.label === 'Resolved Location')?.value).toBe('RACK-A2')
+    expect(summary?.fields.find((field) => field.label === 'Selection Source')?.value).toBe('Fallback rule match')
+    expect(summary?.fields.find((field) => field.label === 'Pallet')?.value).toBe('PLT-SEED-RACK-A2')
+    expect(summary?.fields.find((field) => field.label === 'Lock State')?.value).toBe('Locked')
+  })
+
+  it('builds a retrieve execution summary with before and after resource transitions', () => {
+    const task: FlowTaskDetail = {
+      id: 10,
+      executableType: 1,
+      flowId: 'db:outbound-basic:v1',
+      acknowledged: true,
+      status: 3,
+      variableEntities: [
+        { id: 'SourceLocationCode', value: '"RACK-A2"' },
+        { id: 'SourcePalletId', value: '1' },
+        { id: 'SkuCode', value: '"SKU-001"' },
+      ],
+      resourceDetails: [
+        { id: 1, resourceType: 'Backend.Demo.Domain.Location', resourceId: '3' },
+        { id: 2, resourceType: 'Backend.Demo.Domain.Pallet', resourceId: '1' },
+      ],
+      executableDetailModels: [],
+    }
+
+    const summary = buildExecutionResourceSummary(
+      task,
+      { nodeId: 'Retrieve' },
+      locations,
+      ports,
+      pallets,
+      skus,
+    )
+
+    expect(summary?.ruleMatch).toBeNull()
+    expect(summary?.transition?.before).toContain('RACK-A2 occupied')
+    expect(summary?.transition?.before).toContain('PLT-SEED-RACK-A2')
+    expect(summary?.transition?.after).toContain('RACK-A2 empty')
+    expect(summary?.transition?.after).toContain('pallet released')
+  })
+
+  it('builds an acquire source execution summary with rule match and fallback detail', () => {
+    const task: FlowTaskDetail = {
+      id: 10,
+      executableType: 1,
+      flowId: 'db:outbound-basic:v1',
+      acknowledged: true,
+      status: 3,
+      variableEntities: [
+        { id: 'SourceLocationCode', value: '"RACK-A2"' },
+        { id: 'SourcePalletId', value: '1' },
+        { id: 'SkuCode', value: '"SKU-001"' },
+        { id: 'SkuId', value: '1' },
+      ],
+      resourceDetails: [
+        { id: 1, resourceType: 'Backend.Demo.Domain.Location', resourceId: '3' },
+      ],
+      executableDetailModels: [],
+    }
+
+    const summary = buildExecutionResourceSummary(
+      task,
+      { nodeId: 'AcquireSourceLocation' },
+      locations,
+      ports,
+      pallets,
+      skus,
+      'RACK-A1',
+    )
+
+    expect(summary?.ruleMatch).toBe('occupied-rack-location')
+    expect(summary?.transition?.before).toContain('Requested RACK-A1')
+    expect(summary?.transition?.before).toContain('SKU-001')
+    expect(summary?.transition?.after).toContain('Locked RACK-A2')
+    expect(summary?.transition?.after).toContain('PLT-SEED-RACK-A2')
+  })
+
+  it('describes the inbound binding node as the occupancy transition', () => {
+    const summary = buildExecutionResourceSummary(
+      {
+        id: 30,
+        executableType: 1,
+        flowId: 'db:inbound-basic:v1',
+        acknowledged: true,
+        status: 4,
+        variableEntities: [
+          { id: 'TargetLocationCode', value: '"RACK-A1"' },
+          { id: 'InboundPalletCode', value: '"PLT-IN-1001"' },
+          { id: 'InboundPalletId', value: '2' },
+          { id: 'SkuCode', value: '"SKU-001"' },
+        ],
+        resourceDetails: [],
+        executableDetailModels: [],
+      },
+      { nodeId: 'BindLocationPallet' },
+      locations,
+      ports,
+      pallets,
+      skus,
+    )
+
+    expect(summary?.transition?.before).toContain('RACK-A1 empty')
+    expect(summary?.transition?.after).toContain('RACK-A1 occupied')
+    expect(summary?.transition?.after).toContain('PLT-IN-1001')
+  })
+
+  it('describes inbound port acquisition and occupancy', () => {
+    const task: FlowTaskDetail = {
+      id: 40,
+      executableType: 1,
+      flowId: 'db:inbound-basic:v1',
+      acknowledged: true,
+      status: 3,
+      variableEntities: [
+        { id: 'InboundPortCode', value: '"IN-PORT-01"' },
+      ],
+      resourceDetails: [
+        { id: 1, resourceType: 'Backend.Demo.Domain.Port', resourceId: '1' },
+      ],
+      executableDetailModels: [],
+    }
+
+    const acquireSummary = buildExecutionResourceSummary(
+      task,
+      { nodeId: 'AcquireInboundPort' },
+      locations,
+      ports,
+      pallets,
+      skus,
+    )
+    const occupySummary = buildExecutionResourceSummary(
+      task,
+      { nodeId: 'OccupyInboundPort' },
+      locations,
+      ports,
+      pallets,
+      skus,
+    )
+
+    expect(acquireSummary?.ruleMatch).toBe('idle-inbound-port')
+    expect(acquireSummary?.fields.find((field) => field.label === 'Resolved Port')?.value).toBe('IN-PORT-01')
+    expect(acquireSummary?.fields.find((field) => field.label === 'Port Lock State')?.value).toBe('Locked')
+    expect(occupySummary?.transition?.before).toContain('IN-PORT-01 idle')
+    expect(occupySummary?.transition?.after).toContain('IN-PORT-01 occupied')
+  })
+
+  it('describes outbound port release and pallet acquire transitions', () => {
+    const task: FlowTaskDetail = {
+      id: 50,
+      executableType: 1,
+      flowId: 'db:outbound-basic:v1',
+      acknowledged: true,
+      status: 3,
+      variableEntities: [
+        { id: 'OutboundPortCode', value: '"OUT-PORT-01"' },
+        { id: 'SourcePalletId', value: '1' },
+        { id: 'SkuCode', value: '"SKU-001"' },
+      ],
+      resourceDetails: [
+        { id: 1, resourceType: 'Backend.Demo.Domain.Pallet', resourceId: '1' },
+        { id: 2, resourceType: 'Backend.Demo.Domain.Port', resourceId: '2' },
+      ],
+      executableDetailModels: [],
+    }
+
+    const acquirePalletSummary = buildExecutionResourceSummary(
+      task,
+      { nodeId: 'AcquireSourcePallet' },
+      locations,
+      ports,
+      pallets,
+      skus,
+    )
+    const releaseSummary = buildExecutionResourceSummary(
+      task,
+      { nodeId: 'ReleaseOutboundPort' },
+      locations,
+      ports,
+      pallets,
+      skus,
+    )
+
+    expect(acquirePalletSummary?.transition?.before).toContain('Requested pallet')
+    expect(acquirePalletSummary?.transition?.after).toContain('Locked pallet')
+    expect(releaseSummary?.transition?.before).toContain('OUT-PORT-01 occupied')
+    expect(releaseSummary?.transition?.after).toContain('OUT-PORT-01 idle')
+  })
+})

@@ -1,8 +1,9 @@
 import { Background, Controls, ReactFlow, ReactFlowProvider } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { ArrowLeft, RefreshCcw, RotateCcw, SkipForward, XCircle } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { ResourceSummaryPanel } from '../components/ResourceSummaryPanel'
 import { FlowTaskStatusPill } from '../components/StatusPill'
 import { PageHeader } from '../components/PageHeader'
 import { api } from '../lib/api'
@@ -12,9 +13,12 @@ import {
   findReplacementExecutableId,
   getExecutableActionHint,
   getExecutableActions,
+  getExecutionNodeKindLabel,
   type ExecutableAction,
 } from '../lib/flowExecution'
+import { buildExecutionResourceSummary } from '../lib/resourceSummary'
 import { useOrderTaskDetail } from '../lib/useOrderTaskDetail'
+import type { LocationModel, PalletModel, PortModel, SkuModel } from '../types'
 
 export function TaskExecutionPage() {
   return (
@@ -35,6 +39,10 @@ function TaskExecutionWorkspace() {
   const [message, setMessage] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [busyAction, setBusyAction] = useState<string | null>(null)
+  const [locations, setLocations] = useState<LocationModel[]>([])
+  const [ports, setPorts] = useState<PortModel[]>([])
+  const [pallets, setPallets] = useState<PalletModel[]>([])
+  const [skus, setSkus] = useState<SkuModel[]>([])
   const graph = useMemo(() => buildExecutionGraph(task), [task])
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const activeSelectedNodeId =
@@ -45,6 +53,38 @@ function TaskExecutionWorkspace() {
   const selectedDetail = selectedNode?.data.detail ?? null
   const actionSet = useMemo(() => getExecutableActions(task, selectedDetail), [task, selectedDetail])
   const actionHint = useMemo(() => getExecutableActionHint(task, selectedDetail), [task, selectedDetail])
+  const resourceSummary = useMemo(
+    () => buildExecutionResourceSummary(task, selectedDetail, locations, ports, pallets, skus),
+    [task, selectedDetail, locations, ports, pallets, skus],
+  )
+
+  useEffect(() => {
+    let cancelled = false
+
+    void Promise.all([api.getLocations(), api.getPorts(), api.getPallets(), api.getSkus()])
+      .then(([locationResponse, portResponse, palletResponse, skuResponse]) => {
+        if (cancelled) {
+          return
+        }
+
+        setLocations(locationResponse.items)
+        setPorts(portResponse.items)
+        setPallets(palletResponse.items)
+        setSkus(skuResponse.items)
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLocations([])
+          setPorts([])
+          setPallets([])
+          setSkus([])
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   async function runFlowAction(action: ExecutableAction) {
     if (!task) {
@@ -213,6 +253,10 @@ function TaskExecutionWorkspace() {
                   <strong>{selectedDetail.nodeId}</strong>
                 </div>
                 <div>
+                  <span className="meta-label">Kind</span>
+                  <strong>{getExecutionNodeKindLabel(selectedDetail)}</strong>
+                </div>
+                <div>
                   <span className="meta-label">Executable Id</span>
                   <strong>{selectedDetail.id}</strong>
                 </div>
@@ -264,6 +308,8 @@ function TaskExecutionWorkspace() {
                   </ul>
                 </div>
               ) : null}
+
+              {resourceSummary ? <ResourceSummaryPanel summary={resourceSummary} /> : null}
             </div>
           ) : (
             <div className="empty-panel">Select an execution node to inspect it.</div>
