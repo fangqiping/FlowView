@@ -5,6 +5,7 @@ import type {
   OrderKind,
   OutboundOrderModel,
   PalletModel,
+  PortModel,
   ResourceSummaryCard,
   ResourceSummaryField,
   SkuModel,
@@ -25,6 +26,7 @@ export function buildOrderResourceSummary(
   order: OrderModel | null,
   task: FlowTaskDetail | null,
   locations: LocationModel[],
+  ports: PortModel[],
   pallets: PalletModel[],
   skus: SkuModel[],
 ): ResourceSummaryCard | null {
@@ -56,6 +58,8 @@ export function buildOrderResourceSummary(
     : pallet
       ? skus.find((item) => item.id === pallet.skuId) ?? null
       : null
+  const portCode = readStringVariable(task, kind === 'inbound' ? 'InboundPortCode' : 'OutboundPortCode')
+  const port = findPortByCode(ports, portCode)
   const lockedResourceIds = getLockedResourceIds(task)
 
   const fields: ResourceSummaryField[] = [
@@ -69,6 +73,17 @@ export function buildOrderResourceSummary(
       value: resolvedLocation && lockedResourceIds.has(`location:${resolvedLocation.id}`) ? 'Locked' : 'Unlocked',
     },
   ]
+
+  if (portCode || port) {
+    fields.push(
+      { label: 'Resolved Port', value: port?.code ?? portCode ?? 'Unknown' },
+      { label: 'Port Status', value: port ? toPortStatusLabel(port.status) : 'Unknown' },
+      {
+        label: 'Port Lock State',
+        value: port && lockedResourceIds.has(`port:${port.id}`) ? 'Locked' : 'Unlocked',
+      },
+    )
+  }
 
   const selectionSource = toSelectionSourceLabel(requestedLocation?.code, resolvedLocation?.code ?? resolvedLocationCode)
   if (selectionSource) {
@@ -85,6 +100,7 @@ export function buildExecutionResourceSummary(
   task: FlowTaskDetail | null,
   selectedNode: { nodeId?: string | null } | null,
   locations: LocationModel[],
+  ports: PortModel[],
   pallets: PalletModel[],
   skus: SkuModel[],
   requestedLocationCode?: string | null,
@@ -108,6 +124,8 @@ export function buildExecutionResourceSummary(
   const palletCode = isInbound
     ? readStringVariable(task, 'InboundPalletCode') ?? pallet?.code ?? null
     : pallet?.code ?? null
+  const portCode = readStringVariable(task, isInbound ? 'InboundPortCode' : 'OutboundPortCode')
+  const port = findPortByCode(ports, portCode)
   const sku = skuCode
     ? skus.find((item) => item.code === skuCode) ?? null
     : pallet
@@ -131,10 +149,22 @@ export function buildExecutionResourceSummary(
     },
   )
 
+  if (nodeId.includes('Port') || portCode || port) {
+    fields.push(
+      { label: 'Resolved Port', value: port?.code ?? portCode ?? 'Unknown' },
+      { label: 'Port Status', value: port ? toPortStatusLabel(port.status) : 'Unknown' },
+      {
+        label: 'Port Lock State',
+        value: port && lockedResourceIds.has(`port:${port.id}`) ? 'Locked' : 'Unlocked',
+      },
+    )
+  }
+
   const ruleMatch = toRuleMatchLabel(nodeId)
   const transition = toTransition(nodeId, {
     requestedLocationCode: effectiveRequestedLocationCode,
     resolvedLocationCode: resolvedLocation?.code ?? resolvedLocationCode ?? null,
+    portCode: port?.code ?? portCode ?? null,
     palletCode,
     skuCode: sku?.code ?? skuCode ?? null,
   })
@@ -190,6 +220,14 @@ function findLocationByCode(locations: LocationModel[], code?: string | null) {
   return locations.find((location) => location.code === code) ?? null
 }
 
+function findPortByCode(ports: PortModel[], code?: string | null) {
+  if (!code) {
+    return null
+  }
+
+  return ports.find((port) => port.code === code) ?? null
+}
+
 function getLockedResourceIds(task: FlowTaskDetail | null) {
   const locked = new Set<string>()
   for (const detail of task?.resourceDetails ?? []) {
@@ -200,6 +238,8 @@ function getLockedResourceIds(task: FlowTaskDetail | null) {
     const type = detail.resourceType?.toLowerCase() ?? ''
     if (type.includes('pallet')) {
       locked.add(`pallet:${detail.resourceId}`)
+    } else if (type.includes('port')) {
+      locked.add(`port:${detail.resourceId}`)
     } else {
       locked.add(`location:${detail.resourceId}`)
     }
@@ -220,12 +260,29 @@ function toLocationStatusLabel(status: number) {
   }
 }
 
+function toPortStatusLabel(status: number) {
+  switch (status) {
+    case 1:
+      return 'Idle'
+    case 2:
+      return 'Reserved'
+    case 3:
+      return 'Occupied'
+    default:
+      return `Status ${status}`
+  }
+}
+
 function toRuleMatchLabel(nodeId: string) {
   switch (nodeId) {
     case 'AcquireTargetLocation':
       return 'empty-rack-location'
     case 'AcquireSourceLocation':
       return 'occupied-rack-location'
+    case 'AcquireInboundPort':
+      return 'idle-inbound-port'
+    case 'AcquireOutboundPort':
+      return 'idle-outbound-port'
     default:
       return null
   }
@@ -236,6 +293,7 @@ function toTransition(
   context: {
     requestedLocationCode: string | null
     resolvedLocationCode: string | null
+    portCode: string | null
     palletCode: string | null
     skuCode: string | null
   },
@@ -263,11 +321,33 @@ function toTransition(
           context.palletCode ? `with pallet ${context.palletCode}` : null,
         ].filter(Boolean).join(' '),
       }
+    case 'AcquireSourcePallet':
+      return {
+        before: context.palletCode ? `Requested pallet ${context.palletCode}` : 'Requested pallet',
+        after: context.palletCode ? `Locked pallet ${context.palletCode}` : 'Locked pallet',
+      }
+    case 'StackCraneMoveToRack':
     case 'Store':
       return {
         before: context.resolvedLocationCode ? `${context.resolvedLocationCode} empty` : 'Target location empty',
         after: context.resolvedLocationCode ? `${context.resolvedLocationCode} occupied, pallet created` : 'Location occupied, pallet created',
       }
+    case 'AcquireInboundPort':
+      return {
+        before: context.portCode ? `Requested ${context.portCode}` : 'Requested inbound port',
+        after: context.portCode ? `Locked ${context.portCode}` : 'Locked inbound port',
+      }
+    case 'OccupyInboundPort':
+      return {
+        before: context.portCode ? `${context.portCode} idle` : 'Inbound port idle',
+        after: context.portCode ? `${context.portCode} occupied with pallet staged` : 'Inbound port occupied with pallet staged',
+      }
+    case 'AcquireOutboundPort':
+      return {
+        before: context.portCode ? `Requested ${context.portCode}` : 'Requested outbound port',
+        after: context.portCode ? `Locked ${context.portCode}` : 'Locked outbound port',
+      }
+    case 'StackCraneMoveToOutboundPort':
     case 'Retrieve':
       return {
         before: [
@@ -283,6 +363,16 @@ function toTransition(
           context.resolvedLocationCode ? `${context.resolvedLocationCode} occupied` : 'Location occupied',
           context.palletCode ? `pallet ${context.palletCode} bound` : 'pallet bound',
         ].join(', '),
+      }
+    case 'BindOutboundPort':
+      return {
+        before: context.resolvedLocationCode ? `${context.resolvedLocationCode} occupied` : 'Source location occupied',
+        after: context.portCode ? `${context.portCode} occupied with pallet staged` : 'Outbound port occupied with pallet staged',
+      }
+    case 'ReleaseOutboundPort':
+      return {
+        before: context.portCode ? `${context.portCode} occupied with pallet staged` : 'Outbound port occupied with pallet staged',
+        after: context.portCode ? `${context.portCode} idle and pallet released` : 'Outbound port idle and pallet released',
       }
     default:
       return {

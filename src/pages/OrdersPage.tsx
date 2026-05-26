@@ -22,6 +22,7 @@ import type {
   OrderKind,
   OutboundOrderModel,
   PalletModel,
+  PortModel,
   SkuModel,
 } from '../types'
 
@@ -31,6 +32,7 @@ export function OrdersPage({ kind }: { kind: OrderKind }) {
   const [orders, setOrders] = useState<OrderModel[]>([])
   const [skus, setSkus] = useState<SkuModel[]>([])
   const [locations, setLocations] = useState<LocationModel[]>([])
+  const [ports, setPorts] = useState<PortModel[]>([])
   const [pallets, setPallets] = useState<PalletModel[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [busyAction, setBusyAction] = useState<string | null>(null)
@@ -74,8 +76,8 @@ export function OrdersPage({ kind }: { kind: OrderKind }) {
   )
   const executionSteps = useMemo(() => getExecutionSteps(selectedTask), [selectedTask])
   const resourceSummary = useMemo(
-    () => buildOrderResourceSummary(kind, selectedOrder, selectedTask, locations, pallets, skus),
-    [kind, selectedOrder, selectedTask, locations, pallets, skus],
+    () => buildOrderResourceSummary(kind, selectedOrder, selectedTask, locations, ports, pallets, skus),
+    [kind, selectedOrder, selectedTask, locations, ports, pallets, skus],
   )
 
   useEffect(() => {
@@ -103,15 +105,17 @@ export function OrdersPage({ kind }: { kind: OrderKind }) {
     try {
       setError(null)
       setMessage(null)
-      const [skuResponse, locationResponse, palletResponse, orderResponse] = await Promise.all([
+      const [skuResponse, locationResponse, portResponse, palletResponse, orderResponse] = await Promise.all([
         api.getSkus(),
         api.getLocations(),
+        api.getPorts(),
         api.getPallets(),
         kind === 'inbound' ? api.getInboundOrders() : api.getOutboundOrders(),
       ])
 
       setSkus(skuResponse.items)
       setLocations(locationResponse.items)
+      setPorts(portResponse.items)
       setPallets(palletResponse.items)
       setOrders(orderResponse.items)
 

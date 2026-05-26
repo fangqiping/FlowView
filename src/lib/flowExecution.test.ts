@@ -4,6 +4,7 @@ import {
   applyOrderTaskSnapshots,
   buildExecutionGraph,
   createSuggestedOrderCode,
+  getExecutionNodeKindLabel,
   findNextExecutableIdAfterSkip,
   findReplacementExecutableId,
   getExecutableActions,
@@ -163,6 +164,12 @@ describe('flowExecution helpers', () => {
       nodeActions: ['cancel'],
     })
     expect(getExecutableActionHint(task, selectedNode)).toBe('This node can be canceled while it is running.')
+  })
+
+  it('labels acquire nodes as resource acquire nodes', () => {
+    expect(getExecutionNodeKindLabel({ nodeId: 'AcquireInboundPort' })).toBe('Resource acquire')
+    expect(getExecutionNodeKindLabel({ nodeId: 'AcquireSourcePallet' })).toBe('Resource acquire')
+    expect(getExecutionNodeKindLabel({ nodeId: 'BindLocationPallet' })).toBe('Operation node')
   })
 
   it('prefers server-provided available actions for child executables', () => {
@@ -461,6 +468,78 @@ describe('flowExecution helpers', () => {
         parentFlowTaskId: 40,
       }),
     ).toBe(302)
+  })
+
+  it('finds the replacement acquire executable created by retrying a node', () => {
+    const task: FlowTaskDetail = {
+      id: 20,
+      executableType: 1,
+      flowId: 'db:outbound-basic:v1',
+      acknowledged: true,
+      status: 3,
+      executableDetailModels: [
+        {
+          executableType: 0,
+          id: 31,
+          parentFlowTaskId: 20,
+          nodeId: 'AcquireSourcePallet',
+          acknowledged: true,
+          status: 8,
+          scheduledTime: '2026-05-26T10:00:00Z',
+        },
+        {
+          executableType: 0,
+          id: 32,
+          parentFlowTaskId: 20,
+          nodeId: 'AcquireSourcePallet',
+          acknowledged: false,
+          status: 3,
+          scheduledTime: '2026-05-26T10:00:02Z',
+        },
+      ],
+    }
+
+    expect(findReplacementExecutableId(task, {
+      id: 31,
+      executableType: 0,
+      parentFlowTaskId: 20,
+      nodeId: 'AcquireSourcePallet',
+    })).toBe(32)
+  })
+
+  it('finds the successor executable after skipping an acquire node', () => {
+    const task: FlowTaskDetail = {
+      id: 20,
+      executableType: 1,
+      flowId: 'db:outbound-basic:v1',
+      acknowledged: true,
+      status: 3,
+      executableDetailModels: [
+        {
+          executableType: 0,
+          id: 41,
+          parentFlowTaskId: 20,
+          nodeId: 'AcquireSourcePallet',
+          acknowledged: true,
+          status: 8,
+          scheduledTime: '2026-05-26T10:00:00Z',
+        },
+        {
+          executableType: 0,
+          id: 42,
+          parentFlowTaskId: 20,
+          nodeId: 'AcquireOutboundPort',
+          acknowledged: false,
+          status: 3,
+          scheduledTime: '2026-05-26T10:00:01Z',
+        },
+      ],
+    }
+
+    expect(findNextExecutableIdAfterSkip(task, {
+      id: 41,
+      parentFlowTaskId: 20,
+    })).toBe(42)
   })
 
   it('returns null when skipping the last node completes the flow', () => {

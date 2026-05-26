@@ -13,11 +13,12 @@ import {
   findReplacementExecutableId,
   getExecutableActionHint,
   getExecutableActions,
+  getExecutionNodeKindLabel,
   type ExecutableAction,
 } from '../lib/flowExecution'
 import { buildExecutionResourceSummary } from '../lib/resourceSummary'
 import { useOrderTaskDetail } from '../lib/useOrderTaskDetail'
-import type { LocationModel, PalletModel, SkuModel } from '../types'
+import type { LocationModel, PalletModel, PortModel, SkuModel } from '../types'
 
 export function TaskExecutionPage() {
   return (
@@ -39,6 +40,7 @@ function TaskExecutionWorkspace() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [busyAction, setBusyAction] = useState<string | null>(null)
   const [locations, setLocations] = useState<LocationModel[]>([])
+  const [ports, setPorts] = useState<PortModel[]>([])
   const [pallets, setPallets] = useState<PalletModel[]>([])
   const [skus, setSkus] = useState<SkuModel[]>([])
   const graph = useMemo(() => buildExecutionGraph(task), [task])
@@ -52,26 +54,28 @@ function TaskExecutionWorkspace() {
   const actionSet = useMemo(() => getExecutableActions(task, selectedDetail), [task, selectedDetail])
   const actionHint = useMemo(() => getExecutableActionHint(task, selectedDetail), [task, selectedDetail])
   const resourceSummary = useMemo(
-    () => buildExecutionResourceSummary(task, selectedDetail, locations, pallets, skus),
-    [task, selectedDetail, locations, pallets, skus],
+    () => buildExecutionResourceSummary(task, selectedDetail, locations, ports, pallets, skus),
+    [task, selectedDetail, locations, ports, pallets, skus],
   )
 
   useEffect(() => {
     let cancelled = false
 
-    void Promise.all([api.getLocations(), api.getPallets(), api.getSkus()])
-      .then(([locationResponse, palletResponse, skuResponse]) => {
+    void Promise.all([api.getLocations(), api.getPorts(), api.getPallets(), api.getSkus()])
+      .then(([locationResponse, portResponse, palletResponse, skuResponse]) => {
         if (cancelled) {
           return
         }
 
         setLocations(locationResponse.items)
+        setPorts(portResponse.items)
         setPallets(palletResponse.items)
         setSkus(skuResponse.items)
       })
       .catch(() => {
         if (!cancelled) {
           setLocations([])
+          setPorts([])
           setPallets([])
           setSkus([])
         }
@@ -247,6 +251,10 @@ function TaskExecutionWorkspace() {
                 <div>
                   <span className="meta-label">Node</span>
                   <strong>{selectedDetail.nodeId}</strong>
+                </div>
+                <div>
+                  <span className="meta-label">Kind</span>
+                  <strong>{getExecutionNodeKindLabel(selectedDetail)}</strong>
                 </div>
                 <div>
                   <span className="meta-label">Executable Id</span>

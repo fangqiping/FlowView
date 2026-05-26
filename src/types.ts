@@ -92,6 +92,18 @@ export interface LocationModel {
   currentPalletId?: number | null
 }
 
+export interface PortModel {
+  id: number
+  code: string
+  name: string
+  enabled: boolean
+  acquired: boolean
+  portType: number
+  status: number
+  warehouseId: number
+  currentPalletId?: number | null
+}
+
 export interface PalletModel {
   id: number
   code: string
