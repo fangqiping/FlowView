@@ -44,10 +44,13 @@ export function buildOrderResourceSummary(
   const resolvedLocationCode = readStringVariable(task, kind === 'inbound' ? 'TargetLocationCode' : 'SourceLocationCode')
   const resolvedLocation = findLocationByCode(locations, resolvedLocationCode)
   const palletId = kind === 'inbound'
-    ? resolvedLocation?.currentPalletId ?? null
+    ? readNumberVariable(task, 'InboundPalletId') ?? resolvedLocation?.currentPalletId ?? null
     : readNumberVariable(task, 'SourcePalletId')
   const pallet = palletId != null ? pallets.find((item) => item.id === palletId) ?? null : null
   const skuCode = readStringVariable(task, 'SkuCode')
+  const palletCode = kind === 'inbound'
+    ? readStringVariable(task, 'InboundPalletCode') ?? pallet?.code ?? null
+    : pallet?.code ?? null
   const sku = skuCode
     ? skus.find((item) => item.code === skuCode) ?? null
     : pallet
@@ -59,7 +62,7 @@ export function buildOrderResourceSummary(
     { label: 'Requested Location', value: requestedLocation?.code ?? 'Unknown' },
     { label: 'Resolved Location', value: resolvedLocation?.code ?? resolvedLocationCode ?? 'Unknown' },
     { label: 'Location Status', value: resolvedLocation ? toLocationStatusLabel(resolvedLocation.status) : 'Unknown' },
-    { label: 'Pallet', value: pallet?.code ?? (palletId ? `Pallet #${palletId}` : 'None') },
+    { label: 'Pallet', value: palletCode ?? (palletId ? `Pallet #${palletId}` : 'None') },
     { label: 'SKU', value: sku?.code ?? skuCode ?? 'Unknown' },
     {
       label: 'Lock State',
@@ -98,10 +101,13 @@ export function buildExecutionResourceSummary(
   const resolvedLocationCode = readStringVariable(task, isInbound ? 'TargetLocationCode' : 'SourceLocationCode')
   const resolvedLocation = findLocationByCode(locations, resolvedLocationCode)
   const palletId = isInbound
-    ? resolvedLocation?.currentPalletId ?? null
+    ? readNumberVariable(task, 'InboundPalletId') ?? resolvedLocation?.currentPalletId ?? null
     : readNumberVariable(task, 'SourcePalletId')
   const pallet = palletId != null ? pallets.find((item) => item.id === palletId) ?? null : null
   const skuCode = readStringVariable(task, 'SkuCode')
+  const palletCode = isInbound
+    ? readStringVariable(task, 'InboundPalletCode') ?? pallet?.code ?? null
+    : pallet?.code ?? null
   const sku = skuCode
     ? skus.find((item) => item.code === skuCode) ?? null
     : pallet
@@ -117,7 +123,7 @@ export function buildExecutionResourceSummary(
   fields.push(
     { label: 'Resolved Location', value: resolvedLocationLabel },
     { label: 'Location Status', value: resolvedLocation ? toLocationStatusLabel(resolvedLocation.status) : 'Unknown' },
-    { label: 'Pallet', value: pallet?.code ?? (palletId ? `Pallet #${palletId}` : 'None') },
+    { label: 'Pallet', value: palletCode ?? (palletId ? `Pallet #${palletId}` : 'None') },
     { label: 'SKU', value: sku?.code ?? skuCode ?? 'Unknown' },
     {
       label: 'Lock State',
@@ -129,7 +135,7 @@ export function buildExecutionResourceSummary(
   const transition = toTransition(nodeId, {
     requestedLocationCode: effectiveRequestedLocationCode,
     resolvedLocationCode: resolvedLocation?.code ?? resolvedLocationCode ?? null,
-    palletCode: pallet?.code ?? null,
+    palletCode,
     skuCode: sku?.code ?? skuCode ?? null,
   })
 
@@ -269,6 +275,14 @@ function toTransition(
           context.palletCode ? `with pallet ${context.palletCode}` : 'pallet bound',
         ].filter(Boolean).join(', '),
         after: context.resolvedLocationCode ? `${context.resolvedLocationCode} empty, pallet released` : 'Location empty, pallet released',
+      }
+    case 'BindLocationPallet':
+      return {
+        before: context.resolvedLocationCode ? `${context.resolvedLocationCode} empty` : 'Target location empty',
+        after: [
+          context.resolvedLocationCode ? `${context.resolvedLocationCode} occupied` : 'Location occupied',
+          context.palletCode ? `pallet ${context.palletCode} bound` : 'pallet bound',
+        ].join(', '),
       }
     default:
       return {

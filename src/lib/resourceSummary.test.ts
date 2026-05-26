@@ -153,4 +153,32 @@ describe('resourceSummary helpers', () => {
     expect(summary?.transition?.after).toContain('Locked RACK-A2')
     expect(summary?.transition?.after).toContain('PLT-SEED-RACK-A2')
   })
+
+  it('describes the inbound binding node as the occupancy transition', () => {
+    const summary = buildExecutionResourceSummary(
+      {
+        id: 30,
+        executableType: 1,
+        flowId: 'db:inbound-basic:v1',
+        acknowledged: true,
+        status: 4,
+        variableEntities: [
+          { id: 'TargetLocationCode', value: '"RACK-A1"' },
+          { id: 'InboundPalletCode', value: '"PLT-IN-1001"' },
+          { id: 'InboundPalletId', value: '2' },
+          { id: 'SkuCode', value: '"SKU-001"' },
+        ],
+        resourceDetails: [],
+        executableDetailModels: [],
+      },
+      { nodeId: 'BindLocationPallet' },
+      locations,
+      pallets,
+      skus,
+    )
+
+    expect(summary?.transition?.before).toContain('RACK-A1 empty')
+    expect(summary?.transition?.after).toContain('RACK-A1 occupied')
+    expect(summary?.transition?.after).toContain('PLT-IN-1001')
+  })
 })
