@@ -228,6 +228,49 @@ export interface ContentResponse<T> {
   items: T[]
 }
 
+export interface PagedResponse<T> {
+  items: T[]
+  totalCount: number
+  pageIndex: number
+  pageSize: number
+  totalPages?: number
+  hasPreviousPage?: boolean
+  hasNextPage?: boolean
+}
+
+export interface LocationInputModel {
+  code: string
+  name: string
+  enabled: boolean
+  locationType: number
+  status: number
+  currentPalletId?: number | null
+  warehouseId: number
+}
+
+export interface PortInputModel {
+  code: string
+  name: string
+  enabled: boolean
+  portType: number
+  status: number
+  currentPalletId?: number | null
+  warehouseId: number
+}
+
+export interface PalletInputModel {
+  code: string
+  enabled: boolean
+  skuId: number
+  quantity: number
+}
+
+export interface SkuInputModel {
+  code: string
+  name: string
+  spec: string
+}
+
 export type InboundOrderNoOpSearchContext = Record<string, never>
 export type OutboundOrderNoOpSearchContext = Record<string, never>
 

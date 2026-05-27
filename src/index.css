@@ -452,6 +452,50 @@ textarea:focus {
   color: #ffb4b4;
 }
 
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pager-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 14px 18px;
+  border-top: 1px solid rgba(149, 161, 184, 0.12);
+}
+
+.modal-scrim {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(3, 6, 12, 0.64);
+  backdrop-filter: blur(8px);
+  z-index: 20;
+}
+
+.modal-card {
+  width: min(640px, calc(100vw - 32px));
+  border: 1px solid rgba(149, 161, 184, 0.16);
+  border-radius: 8px;
+  background: rgba(15, 21, 31, 0.98);
+  overflow: hidden;
+}
+
+.modal-body {
+  padding: 18px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 18px 18px;
+}
+
 .inline-note {
   margin: 0 18px 18px;
   padding: 10px 12px;

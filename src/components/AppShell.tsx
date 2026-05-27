@@ -1,4 +1,4 @@
-import { Boxes, ClipboardList, GitBranchPlus, PackageOpen } from 'lucide-react'
+import { Boxes, ClipboardList, GitBranchPlus, MapPinned, Package2, PackageOpen, Tags, Workflow } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { API_BASE_URL } from '../lib/api'
 
@@ -7,6 +7,10 @@ const navItems = [
   { to: '/orders/outbound', label: 'Outbound Orders', icon: PackageOpen },
   { to: '/flows', label: 'Flow Definitions', icon: Boxes },
   { to: '/flows/inbound-basic/editor', label: 'Flow Editor', icon: GitBranchPlus },
+  { to: '/master-data/locations', label: 'Locations', icon: MapPinned },
+  { to: '/master-data/ports', label: 'Ports', icon: Workflow },
+  { to: '/master-data/pallets', label: 'Pallets', icon: Package2 },
+  { to: '/master-data/skus', label: 'Skus', icon: Tags },
 ]
 
 export function AppShell() {

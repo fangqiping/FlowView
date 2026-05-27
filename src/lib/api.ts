@@ -10,14 +10,21 @@ import type {
   FlowVersionModel,
   InboundOrderModel,
   LocationModel,
+  LocationInputModel,
   OrderKind,
   OutboundOrderModel,
   PublishFlowVersionModel,
   PutFlowDraftModel,
   PalletModel,
+  PalletInputModel,
+  PagedResponse,
   PortModel,
+  PortInputModel,
   SkuModel,
+  SkuInputModel,
+  WarehouseModel,
 } from '../types'
+import { buildPaginationQuery } from './masterData'
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:5086'
 
@@ -70,6 +77,10 @@ export const api = {
     return request<OutboundOrderModel>(`/api/OutboundOrders/${id}`)
   },
 
+  async getWarehouses() {
+    return request<ContentResponse<WarehouseModel>>('/api/Warehouses?ShouldPaginate=false')
+  },
+
   async createInboundOrder(input: CreateInboundOrderModel) {
     return request<InboundOrderModel>('/api/InboundOrders', {
       method: 'POST',
@@ -95,16 +106,112 @@ export const api = {
     return request<ContentResponse<SkuModel>>('/api/Skus?ShouldPaginate=false')
   },
 
+  async getSkusPage(pageIndex: number, pageSize: number) {
+    return request<PagedResponse<SkuModel>>(`/api/Skus${buildPaginationQuery({ pageIndex, pageSize })}`)
+  },
+
+  async createSku(input: SkuInputModel) {
+    return request<SkuModel>('/api/Skus', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+  },
+
+  async updateSku(id: number, input: SkuInputModel) {
+    return request<SkuModel>(`/api/Skus/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    })
+  },
+
+  async deleteSku(id: number) {
+    return request<void>(`/api/Skus/${id}`, {
+      method: 'DELETE',
+    })
+  },
+
   async getLocations() {
     return request<ContentResponse<LocationModel>>('/api/Locations?ShouldPaginate=false')
+  },
+
+  async getLocationsPage(pageIndex: number, pageSize: number) {
+    return request<PagedResponse<LocationModel>>(`/api/Locations${buildPaginationQuery({ pageIndex, pageSize })}`)
+  },
+
+  async createLocation(input: LocationInputModel) {
+    return request<LocationModel>('/api/Locations', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+  },
+
+  async updateLocation(id: number, input: LocationInputModel) {
+    return request<LocationModel>(`/api/Locations/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    })
+  },
+
+  async deleteLocation(id: number) {
+    return request<void>(`/api/Locations/${id}`, {
+      method: 'DELETE',
+    })
   },
 
   async getPorts() {
     return request<ContentResponse<PortModel>>('/api/Ports?ShouldPaginate=false')
   },
 
+  async getPortsPage(pageIndex: number, pageSize: number) {
+    return request<PagedResponse<PortModel>>(`/api/Ports${buildPaginationQuery({ pageIndex, pageSize })}`)
+  },
+
+  async createPort(input: PortInputModel) {
+    return request<PortModel>('/api/Ports', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+  },
+
+  async updatePort(id: number, input: PortInputModel) {
+    return request<PortModel>(`/api/Ports/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    })
+  },
+
+  async deletePort(id: number) {
+    return request<void>(`/api/Ports/${id}`, {
+      method: 'DELETE',
+    })
+  },
+
   async getPallets() {
     return request<ContentResponse<PalletModel>>('/api/Pallets?ShouldPaginate=false')
+  },
+
+  async getPalletsPage(pageIndex: number, pageSize: number) {
+    return request<PagedResponse<PalletModel>>(`/api/Pallets${buildPaginationQuery({ pageIndex, pageSize })}`)
+  },
+
+  async createPallet(input: PalletInputModel) {
+    return request<PalletModel>('/api/Pallets', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+  },
+
+  async updatePallet(id: number, input: PalletInputModel) {
+    return request<PalletModel>(`/api/Pallets/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    })
+  },
+
+  async deletePallet(id: number) {
+    return request<void>(`/api/Pallets/${id}`, {
+      method: 'DELETE',
+    })
   },
 
   async getFlowCatalog() {
