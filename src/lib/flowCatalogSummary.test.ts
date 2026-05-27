@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { LOCAL_OPERATION_LIBRARY, EDITOR_VARIABLE_TYPES } from './flowDraft'
-import { buildCatalogSummary } from './flowCatalogSummary'
+import { buildCatalogSummary, getVisibleSubFlowTemplates } from './flowCatalogSummary'
 import type { FlowCatalogModel } from '../types'
 
 describe('flowCatalogSummary', () => {
@@ -56,10 +56,24 @@ describe('flowCatalogSummary', () => {
       expressionOperators: [],
     }
 
-    expect(buildCatalogSummary(catalog)).toEqual({
+    expect(buildCatalogSummary(catalog, 'inbound-basic')).toEqual({
       operations: LOCAL_OPERATION_LIBRARY.length,
-      subflows: 2,
+      subflows: 1,
       variableTypes: EDITOR_VARIABLE_TYPES.length,
     })
+  })
+
+  it('filters the current flow out of visible subflow templates', () => {
+    const catalog: FlowCatalogModel = {
+      operations: [],
+      variableTypes: [],
+      subFlowTemplates: [
+        { code: 'inbound-basic', name: 'Inbound', versionNumber: 1, runtimeFlowId: 'db:inbound', inputs: [], outputs: [] },
+        { code: 'outbound-basic', name: 'Outbound', versionNumber: 1, runtimeFlowId: 'db:outbound', inputs: [], outputs: [] },
+      ],
+      expressionOperators: [],
+    }
+
+    expect(getVisibleSubFlowTemplates(catalog, 'inbound-basic').map((item) => item.code)).toEqual(['outbound-basic'])
   })
 })

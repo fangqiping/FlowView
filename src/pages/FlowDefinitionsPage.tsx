@@ -16,7 +16,7 @@ export function FlowDefinitionsPage() {
   const [busy, setBusy] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const catalogSummary = catalog ? buildCatalogSummary(catalog) : null
+  const catalogSummary = catalog ? buildCatalogSummary(catalog, selectedCode) : null
 
   useEffect(() => {
     void loadCatalog()

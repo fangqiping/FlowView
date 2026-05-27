@@ -6,6 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { api, extractDesignError } from '../lib/api'
 import { appendBinding, removeBinding, updateBinding } from '../lib/bindingEditor'
+import { getVisibleSubFlowTemplates } from '../lib/flowCatalogSummary'
 import {
   addOperationNode,
   addSubFlowNode,
@@ -47,6 +48,10 @@ function FlowEditorWorkspace() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [meta, setMeta] = useState({ name: code, description: '' })
+  const visibleSubFlowTemplates = useMemo(
+    () => (catalog ? getVisibleSubFlowTemplates(catalog, code) : []),
+    [catalog, code],
+  )
 
   const selectedNode = useMemo(
     () => nodes.find((node) => node.id === selectedNodeId && node.id !== ROOT_NODE_ID) ?? null,
@@ -288,7 +293,7 @@ function FlowEditorWorkspace() {
                   <Plus size={16} />
                 </button>
               ))}
-              {catalog?.subFlowTemplates.map((template) => (
+              {visibleSubFlowTemplates.map((template) => (
                 <button key={template.runtimeFlowId} type="button" className="list-item-button" onClick={() => setNodes((current) => addSubFlowNode(current, template))}>
                   <div>
                     <strong>{template.name}</strong>
