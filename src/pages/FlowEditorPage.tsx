@@ -16,6 +16,7 @@ import {
   type FlowEdge,
   type FlowNode,
   LOCAL_OPERATION_LIBRARY,
+  EDITOR_VARIABLE_TYPES,
   parseDraftDocument,
   ROOT_NODE_ID,
   toPascalCase,
@@ -329,7 +330,7 @@ function FlowEditorWorkspace() {
                       )
                     }
                   >
-                    {['string', 'bool', 'int', 'long', 'float'].map((type) => (
+                    {EDITOR_VARIABLE_TYPES.map((type) => (
                       <option key={type} value={type}>{type}</option>
                     ))}
                   </select>

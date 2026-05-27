@@ -19,6 +19,7 @@ export type FlowNode = Node<FlowNodeData>
 export type FlowEdge = Edge
 
 export const ROOT_NODE_ID = 'Root'
+export const EDITOR_VARIABLE_TYPES = ['string', 'bool', 'int', 'long', 'float'] as const
 
 export const LOCAL_OPERATION_LIBRARY = [
   {

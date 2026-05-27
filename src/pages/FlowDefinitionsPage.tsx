@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { api, ApiError, extractDesignError } from '../lib/api'
+import { buildCatalogSummary } from '../lib/flowCatalogSummary'
 import type { FlowCatalogModel, FlowDraftModel, FlowVersionModel } from '../types'
 
 const DEMO_FLOW_CODES = ['inbound-basic', 'outbound-basic']
@@ -15,6 +16,7 @@ export function FlowDefinitionsPage() {
   const [busy, setBusy] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const catalogSummary = catalog ? buildCatalogSummary(catalog) : null
 
   useEffect(() => {
     void loadCatalog()
@@ -159,13 +161,13 @@ export function FlowDefinitionsPage() {
             ))}
           </div>
 
-          {catalog ? (
+          {catalogSummary ? (
             <div className="catalog-summary">
               <h4>Catalog summary</h4>
               <div className="meta-grid compact">
-                <div><span className="meta-label">Operations</span><strong>{catalog.operations.length}</strong></div>
-                <div><span className="meta-label">Subflows</span><strong>{catalog.subFlowTemplates.length}</strong></div>
-                <div><span className="meta-label">Variable types</span><strong>{catalog.variableTypes.length}</strong></div>
+                <div><span className="meta-label">Operations</span><strong>{catalogSummary.operations}</strong></div>
+                <div><span className="meta-label">Subflows</span><strong>{catalogSummary.subflows}</strong></div>
+                <div><span className="meta-label">Variable types</span><strong>{catalogSummary.variableTypes}</strong></div>
               </div>
             </div>
           ) : null}
