@@ -253,7 +253,7 @@ export function addSubFlowNode(
         description: template.description ?? '',
         consoleId: '',
         operationTaskType: '',
-        flowId: template.runtimeFlowId,
+        flowId: template.code,
         inputs: template.inputs.map((item) => ({ source: item.id, destination: item.id })),
         outputs: template.outputs.map((item) => ({ source: item.id, destination: item.id })),
         shouldThrowOnFailed: true,
