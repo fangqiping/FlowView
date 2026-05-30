@@ -1,9 +1,13 @@
 import type {
   ContentResponse,
+  CreateFlowDefinitionModel,
   CreateInboundOrderModel,
   CreateOutboundOrderModel,
   FlowCatalogModel,
   FlowDesignErrorModel,
+  FlowDefinitionSummaryModel,
+  FlowDependencyPublishPlanModel,
+  FlowDependencyPublishResultModel,
   FlowDraftModel,
   FlowPreflightModel,
   FlowTaskDetail,
@@ -218,6 +222,17 @@ export const api = {
     return request<FlowCatalogModel>('/api/FlowCatalog')
   },
 
+  async getFlowDefinitions() {
+    return request<FlowDefinitionSummaryModel[]>('/api/FlowDefinitions')
+  },
+
+  async createFlowDefinition(input: CreateFlowDefinitionModel) {
+    return request<FlowDraftModel>('/api/FlowDefinitions', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+  },
+
   async getFlowDraft(code: string) {
     return request<FlowDraftModel>(`/api/FlowDefinitions/${code}/Draft`)
   },
@@ -236,10 +251,24 @@ export const api = {
     })
   },
 
+  async preflightFlowWithDependencies(code: string, expectedRevision: number) {
+    return request<FlowDependencyPublishPlanModel>(`/api/FlowDefinitions/${code}/PreflightWithDependencies`, {
+      method: 'POST',
+      body: JSON.stringify({ expectedRevision }),
+    })
+  },
+
   async publishFlow(code: string, input: PublishFlowVersionModel) {
     return request<FlowVersionModel>(`/api/FlowDefinitions/${code}/Publish`, {
       method: 'POST',
       body: JSON.stringify(input),
+    })
+  },
+
+  async publishFlowWithDependencies(code: string, expectedRevision: number) {
+    return request<FlowDependencyPublishResultModel>(`/api/FlowDefinitions/${code}/PublishWithDependencies`, {
+      method: 'POST',
+      body: JSON.stringify({ expectedRevision }),
     })
   },
 
