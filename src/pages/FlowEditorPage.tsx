@@ -1,12 +1,11 @@
 import { Background, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow, type Edge } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { AlertTriangle, CheckCircle2, Link2, Plus, RefreshCcw, Save, Trash2 } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ExternalLink, Link2, Plus, RefreshCcw, Save, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { api, extractDesignError } from '../lib/api'
 import { appendBinding, removeBinding, updateBinding } from '../lib/bindingEditor'
-import { getVisibleSubFlowTemplates } from '../lib/flowCatalogSummary'
 import {
   addOperationNode,
   addSubFlowNode,
@@ -23,7 +22,8 @@ import {
   toPascalCase,
   type FlowNodeData,
 } from '../lib/flowDraft'
-import type { DraftBinding, DraftVariable, FlowCatalogModel, FlowDraftModel } from '../types'
+import { findSubFlowCandidate } from '../lib/subflowBindings'
+import type { DraftBinding, DraftVariable, FlowCatalogModel, FlowDefinitionSummaryModel, FlowDraftModel } from '../types'
 
 export function FlowEditorPage() {
   return (
@@ -40,6 +40,7 @@ function FlowEditorWorkspace() {
 
   const [draftModel, setDraftModel] = useState<FlowDraftModel | null>(null)
   const [catalog, setCatalog] = useState<FlowCatalogModel | null>(null)
+  const [definitions, setDefinitions] = useState<FlowDefinitionSummaryModel[]>([])
   const [variables, setVariables] = useState<DraftVariable[]>([])
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
@@ -48,14 +49,23 @@ function FlowEditorWorkspace() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [meta, setMeta] = useState({ name: code, description: '' })
-  const visibleSubFlowTemplates = useMemo(
-    () => (catalog ? getVisibleSubFlowTemplates(catalog, code) : []),
-    [catalog, code],
+  const subFlowCandidates = useMemo(
+    () => definitions
+      .filter((definition) => definition.code !== code)
+      .map((definition) => findSubFlowCandidate(definition.code, definitions, catalog))
+      .filter((candidate): candidate is NonNullable<typeof candidate> => candidate != null),
+    [definitions, catalog, code],
   )
 
   const selectedNode = useMemo(
     () => nodes.find((node) => node.id === selectedNodeId && node.id !== ROOT_NODE_ID) ?? null,
     [nodes, selectedNodeId],
+  )
+  const selectedSubFlowCandidate = useMemo(
+    () => selectedNode?.data.kind === 'subflow'
+      ? findSubFlowCandidate(selectedNode.data.flowId, definitions, catalog)
+      : null,
+    [selectedNode, definitions, catalog],
   )
 
   useEffect(() => {
@@ -67,9 +77,10 @@ function FlowEditorWorkspace() {
     try {
       setBusy('load')
       setError(null)
-      const [draft, flowCatalog] = await Promise.all([
+      const [draft, flowCatalog, flowDefinitions] = await Promise.all([
         api.getFlowDraft(code).catch(() => null),
         api.getFlowCatalog(),
+        api.getFlowDefinitions(),
       ])
 
       const model = draft ?? {
@@ -88,6 +99,7 @@ function FlowEditorWorkspace() {
       setDraftModel(model)
       setMeta({ name: model.name, description: model.description ?? '' })
       setCatalog(flowCatalog)
+      setDefinitions(flowDefinitions)
       setVariables(document.variables)
       setNodes(graph.nodes)
       setEdges(graph.edges)
@@ -146,6 +158,32 @@ function FlowEditorWorkspace() {
     }
 
     updateSelectedNode({ [key]: removeBinding(selectedNode.data[key], index) })
+  }
+
+  function updateSubFlowInputBinding(childVariableId: string, parentVariableId: string) {
+    if (!selectedNode) {
+      return
+    }
+
+    updateSelectedNode({
+      inputs: [
+        ...selectedNode.data.inputs.filter((binding) => binding.destination !== childVariableId),
+        ...(parentVariableId ? [{ source: parentVariableId, destination: childVariableId }] : []),
+      ],
+    })
+  }
+
+  function updateSubFlowOutputBinding(childVariableId: string, parentVariableId: string) {
+    if (!selectedNode) {
+      return
+    }
+
+    updateSelectedNode({
+      outputs: [
+        ...selectedNode.data.outputs.filter((binding) => binding.source !== childVariableId),
+        ...(parentVariableId ? [{ source: childVariableId, destination: parentVariableId }] : []),
+      ],
+    })
   }
 
   function addVariable() {
@@ -293,11 +331,11 @@ function FlowEditorWorkspace() {
                   <Plus size={16} />
                 </button>
               ))}
-              {visibleSubFlowTemplates.map((template) => (
-                <button key={template.runtimeFlowId} type="button" className="list-item-button" onClick={() => setNodes((current) => addSubFlowNode(current, template))}>
+              {subFlowCandidates.map((template) => (
+                <button key={template.code} type="button" className="list-item-button" onClick={() => setNodes((current) => addSubFlowNode(current, template))}>
                   <div>
                     <strong>{template.name}</strong>
-                    <p>{template.code}</p>
+                    <p>{template.activeVersionNumber ? `${template.code} v${template.activeVersionNumber}` : template.code}</p>
                   </div>
                   <Plus size={16} />
                 </button>
@@ -429,7 +467,7 @@ function FlowEditorWorkspace() {
                   </>
                 ) : (
                   <label className="wide">
-                    <span>Runtime flow id</span>
+                    <span>Child flow code</span>
                     <input
                       value={selectedNode.data.flowId}
                       onChange={(event) => updateSelectedNode({ flowId: event.target.value })}
@@ -438,7 +476,60 @@ function FlowEditorWorkspace() {
                 )}
               </div>
 
-              <div className="library-section">
+              {selectedNode.data.kind === 'subflow' ? (
+                <div className="library-section">
+                  <div className="panel-header">
+                    <h4>Subflow contract</h4>
+                    {selectedSubFlowCandidate ? (
+                      <button className="secondary-button" type="button" onClick={() => navigate(`/flows/${selectedSubFlowCandidate.code}/editor`)}>
+                        <ExternalLink size={16} />
+                        <span>Open subflow</span>
+                      </button>
+                    ) : null}
+                  </div>
+                  {selectedSubFlowCandidate ? (
+                    <div className="stack-list">
+                      <h5>Inputs</h5>
+                      {selectedSubFlowCandidate.inputs.map((input) => (
+                        <label key={input.id} className="binding-row">
+                          <span>{input.id}</span>
+                          <select
+                            value={selectedNode.data.inputs.find((binding) => binding.destination === input.id)?.source ?? ''}
+                            onChange={(event) => updateSubFlowInputBinding(input.id, event.target.value)}
+                          >
+                            <option value="">Unbound</option>
+                            {variables.map((variable) => (
+                              <option key={variable.id} value={variable.id}>{variable.id}</option>
+                            ))}
+                          </select>
+                        </label>
+                      ))}
+                      {selectedSubFlowCandidate.inputs.length === 0 ? <div className="empty-panel compact">No input contract.</div> : null}
+                      <h5>Outputs</h5>
+                      {selectedSubFlowCandidate.outputs.map((output) => (
+                        <label key={output.id} className="binding-row">
+                          <span>{output.id}</span>
+                          <select
+                            value={selectedNode.data.outputs.find((binding) => binding.source === output.id)?.destination ?? ''}
+                            onChange={(event) => updateSubFlowOutputBinding(output.id, event.target.value)}
+                          >
+                            <option value="">Unbound</option>
+                            {variables.map((variable) => (
+                              <option key={variable.id} value={variable.id}>{variable.id}</option>
+                            ))}
+                          </select>
+                        </label>
+                      ))}
+                      {selectedSubFlowCandidate.outputs.length === 0 ? <div className="empty-panel compact">No output contract.</div> : null}
+                    </div>
+                  ) : (
+                    <div className="empty-panel compact">No published signature found for this subflow code.</div>
+                  )}
+                </div>
+              ) : null}
+
+              {selectedNode.data.kind === 'operation' ? (
+                <div className="library-section">
                 <div className="panel-header">
                   <h4>Input bindings</h4>
                   <button className="icon-button" type="button" onClick={() => appendNodeBinding('inputs')}>
@@ -464,9 +555,11 @@ function FlowEditorWorkspace() {
                     </button>
                   </div>
                 )) : <div className="empty-panel compact">No input bindings yet.</div>}
-              </div>
+                </div>
+              ) : null}
 
-              <div className="library-section">
+              {selectedNode.data.kind === 'operation' ? (
+                <div className="library-section">
                 <div className="panel-header">
                   <h4>Output bindings</h4>
                   <button className="icon-button" type="button" onClick={() => appendNodeBinding('outputs')}>
@@ -492,7 +585,8 @@ function FlowEditorWorkspace() {
                     </button>
                   </div>
                 )) : <div className="empty-panel compact">No output bindings yet.</div>}
-              </div>
+                </div>
+              ) : null}
             </>
           ) : (
             <div className="empty-panel">

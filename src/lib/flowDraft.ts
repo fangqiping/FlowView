@@ -1,6 +1,6 @@
 import type { Connection, Edge, Node, Viewport } from '@xyflow/react'
 import { addEdge } from '@xyflow/react'
-import type { DraftDocument, DraftNode, DraftRoute, DraftVariable, SubFlowTemplateModel } from '../types'
+import type { DraftDocument, DraftNode, DraftRoute, DraftVariable, SubFlowVariableSignatureModel } from '../types'
 
 export interface FlowNodeData extends Record<string, unknown> {
   label: string
@@ -17,6 +17,14 @@ export interface FlowNodeData extends Record<string, unknown> {
 
 export type FlowNode = Node<FlowNodeData>
 export type FlowEdge = Edge
+
+export interface SubFlowNodeTemplate {
+  code: string
+  name: string
+  description?: string | null
+  inputs: SubFlowVariableSignatureModel[]
+  outputs: SubFlowVariableSignatureModel[]
+}
 
 export const ROOT_NODE_ID = 'Root'
 export const EDITOR_VARIABLE_TYPES = ['string', 'bool', 'int', 'long', 'float'] as const
@@ -238,7 +246,7 @@ export function addOperationNode(
 
 export function addSubFlowNode(
   nodes: FlowNode[],
-  template: SubFlowTemplateModel,
+  template: SubFlowNodeTemplate,
 ): FlowNode[] {
   const count = nodes.filter((node) => node.id !== ROOT_NODE_ID).length + 1
   return [
