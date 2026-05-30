@@ -1,29 +1,36 @@
-import { AlertTriangle, CheckCircle2, ExternalLink, RefreshCcw, Rocket } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ExternalLink, Plus, RefreshCcw, Rocket } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { api, ApiError, extractDesignError } from '../lib/api'
 import { buildCatalogSummary } from '../lib/flowCatalogSummary'
-import type { FlowCatalogModel, FlowDraftModel, FlowVersionModel } from '../types'
-
-const DEMO_FLOW_CODES = ['inbound-basic', 'outbound-basic']
+import type { FlowCatalogModel, FlowDefinitionSummaryModel, FlowDraftModel, FlowVersionModel } from '../types'
 
 export function FlowDefinitionsPage() {
-  const [selectedCode, setSelectedCode] = useState(DEMO_FLOW_CODES[0])
+  const [definitions, setDefinitions] = useState<FlowDefinitionSummaryModel[]>([])
+  const [selectedCode, setSelectedCode] = useState('')
   const [draft, setDraft] = useState<FlowDraftModel | null>(null)
   const [versions, setVersions] = useState<FlowVersionModel[]>([])
   const [catalog, setCatalog] = useState<FlowCatalogModel | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createInput, setCreateInput] = useState({ code: '', name: '', description: '' })
   const [busy, setBusy] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const catalogSummary = catalog ? buildCatalogSummary(catalog, selectedCode) : null
 
   useEffect(() => {
-    void loadCatalog()
+    void Promise.all([loadDefinitions(), loadCatalog()])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
-    void loadDefinition(selectedCode)
+    if (selectedCode) {
+      void loadDefinition(selectedCode)
+    } else {
+      setDraft(null)
+      setVersions([])
+    }
   }, [selectedCode])
 
   async function loadCatalog() {
@@ -34,7 +41,31 @@ export function FlowDefinitionsPage() {
     }
   }
 
+  async function loadDefinitions(preferredCode = selectedCode) {
+    try {
+      setError(null)
+      const items = await api.getFlowDefinitions()
+      setDefinitions(items)
+      const nextCode = items.some((item) => item.code === preferredCode)
+        ? preferredCode
+        : items[0]?.code ?? ''
+      if (nextCode !== selectedCode) {
+        setSelectedCode(nextCode)
+      }
+      if (!nextCode) {
+        setDraft(null)
+        setVersions([])
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Failed to load flow definitions.')
+    }
+  }
+
   async function loadDefinition(code: string) {
+    if (!code) {
+      return
+    }
+
     try {
       setBusy('loading')
       setError(null)
@@ -49,6 +80,27 @@ export function FlowDefinitionsPage() {
       setDraft(null)
       setVersions([])
       setError(caught instanceof Error ? caught.message : 'Failed to load flow definition.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function createFlow() {
+    try {
+      setBusy('create')
+      setError(null)
+      const created = await api.createFlowDefinition({
+        code: createInput.code.trim(),
+        name: createInput.name.trim(),
+        description: createInput.description,
+      })
+      setCreateOpen(false)
+      setCreateInput({ code: '', name: '', description: '' })
+      await loadDefinitions(created.code)
+      setSelectedCode(created.code)
+      setMessage(`Created ${created.code}.`)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Failed to create flow definition.')
     } finally {
       setBusy(null)
     }
@@ -125,9 +177,15 @@ export function FlowDefinitionsPage() {
         eyebrow="Design Runtime"
         title="Flow Definitions"
         actions={
-          <button className="icon-button" type="button" onClick={() => void loadDefinition(selectedCode)}>
-            <RefreshCcw size={16} />
-          </button>
+          <>
+            <button className="primary-button" type="button" onClick={() => setCreateOpen(true)}>
+              <Plus size={16} />
+              <span>New flow</span>
+            </button>
+            <button className="icon-button" type="button" aria-label="Refresh definitions" onClick={() => void loadDefinitions()}>
+              <RefreshCcw size={16} />
+            </button>
+          </>
         }
       />
 
@@ -138,27 +196,28 @@ export function FlowDefinitionsPage() {
         <section className="panel">
           <div className="panel-header">
             <h3>Definition list</h3>
-            <span>Demo flows</span>
+            <span>{definitions.length} definitions</span>
           </div>
           <div className="stack-list">
-            {DEMO_FLOW_CODES.map((code) => (
+            {definitions.map((definition) => (
               <button
-                key={code}
+                key={definition.code}
                 type="button"
-                className={`list-item-button${selectedCode === code ? ' selected' : ''}`}
-                onClick={() => setSelectedCode(code)}
+                className={`list-item-button${selectedCode === definition.code ? ' selected' : ''}`}
+                onClick={() => setSelectedCode(definition.code)}
               >
                 <div>
-                  <strong>{code}</strong>
-                  <p>{code === 'inbound-basic' ? 'Inbound put-away flow' : 'Outbound retrieval flow'}</p>
+                  <strong>{definition.code}</strong>
+                  <p>{definition.description || definition.name}</p>
                 </div>
-                {versions.some((item) => item.isActive && item.code === code) ? (
+                {definition.status === 'Active' || definition.activeVersionNumber ? (
                   <CheckCircle2 size={16} />
                 ) : (
                   <AlertTriangle size={16} />
                 )}
               </button>
             ))}
+            {definitions.length === 0 ? <div className="empty-panel">No flow definitions yet.</div> : null}
           </div>
 
           {catalogSummary ? (
@@ -248,6 +307,63 @@ export function FlowDefinitionsPage() {
           </div>
         </section>
       </div>
+
+      {createOpen ? (
+        <div className="modal-scrim" role="presentation">
+          <form
+            className="modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-label="New flow"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void createFlow()
+            }}
+          >
+            <div className="panel-header">
+              <h3>New flow</h3>
+              <button type="button" className="icon-button" aria-label="Close" onClick={() => setCreateOpen(false)}>
+                ×
+              </button>
+            </div>
+            <div className="modal-body form-grid">
+              <label>
+                <span>Code</span>
+                <input
+                  value={createInput.code}
+                  onChange={(event) => setCreateInput((current) => ({ ...current, code: event.target.value }))}
+                />
+              </label>
+              <label>
+                <span>Name</span>
+                <input
+                  value={createInput.name}
+                  onChange={(event) => setCreateInput((current) => ({ ...current, name: event.target.value }))}
+                />
+              </label>
+              <label>
+                <span>Description</span>
+                <textarea
+                  value={createInput.description}
+                  onChange={(event) => setCreateInput((current) => ({ ...current, description: event.target.value }))}
+                />
+              </label>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="secondary-button" onClick={() => setCreateOpen(false)}>
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="primary-button"
+                disabled={busy === 'create' || !createInput.code.trim() || !createInput.name.trim()}
+              >
+                {busy === 'create' ? 'Creating…' : 'Create'}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </div>
   )
 }
