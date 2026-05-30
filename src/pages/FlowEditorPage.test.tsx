@@ -148,6 +148,48 @@ describe('FlowEditorPage subflows', () => {
     expect(saveInput.draftDocumentJson).toContain('"flowId":"child-flow"')
     expect(saveInput.draftDocumentJson).not.toContain('db:child-flow:v1')
   })
+
+  it('preflights and publishes with subflows', async () => {
+    vi.mocked(api.getFlowDefinitions).mockResolvedValue([])
+    vi.mocked(api.getFlowCatalog).mockResolvedValue({
+      operations: [],
+      subFlowTemplates: [],
+      variableTypes: [],
+      expressionOperators: [],
+    })
+    vi.mocked(api.getFlowDraft).mockResolvedValue({
+      code: 'parent-flow',
+      name: 'Parent Flow',
+      revision: 5,
+      updatedAt: '',
+      draftDocumentJson: JSON.stringify({ id: 'ParentFlow', variables: [], nodes: [], routes: [] }),
+    })
+    vi.mocked(api.preflightFlowWithDependencies).mockResolvedValue({
+      rootCode: 'parent-flow',
+      publishOrder: [
+        { code: 'child-flow', revision: 2, publishOrder: 1, referencedBy: ['parent-flow'] },
+        { code: 'parent-flow', revision: 5, publishOrder: 2, referencedBy: [] },
+      ],
+      warnings: [],
+    })
+    vi.mocked(api.publishFlowWithDependencies).mockResolvedValue({
+      rootCode: 'parent-flow',
+      versions: [
+        { code: 'child-flow', versionNumber: 3, runtimeFlowId: 'db:child-flow:v3', sourceDraftRevision: 2 },
+        { code: 'parent-flow', versionNumber: 6, runtimeFlowId: 'db:parent-flow:v6', sourceDraftRevision: 5 },
+      ],
+    })
+
+    renderEditor()
+
+    fireEvent.click(await screen.findByRole('button', { name: /publish with subflows/i }))
+    expect(await screen.findByText(/child-flow r2/i)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /confirm publish/i }))
+
+    expect(api.preflightFlowWithDependencies).toHaveBeenCalledWith('parent-flow', 5)
+    expect(api.publishFlowWithDependencies).toHaveBeenCalledWith('parent-flow', 5)
+    expect(await screen.findByText(/published child-flow v3, parent-flow v6/i)).toBeTruthy()
+  })
 })
 
 function renderEditor() {

@@ -1,6 +1,6 @@
 import { Background, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow, type Edge } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { AlertTriangle, CheckCircle2, ExternalLink, Link2, Plus, RefreshCcw, Save, Trash2 } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ExternalLink, Link2, Network, Plus, RefreshCcw, Save, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
@@ -23,7 +23,14 @@ import {
   type FlowNodeData,
 } from '../lib/flowDraft'
 import { findSubFlowCandidate } from '../lib/subflowBindings'
-import type { DraftBinding, DraftVariable, FlowCatalogModel, FlowDefinitionSummaryModel, FlowDraftModel } from '../types'
+import type {
+  DraftBinding,
+  DraftVariable,
+  FlowCatalogModel,
+  FlowDefinitionSummaryModel,
+  FlowDependencyPublishPlanModel,
+  FlowDraftModel,
+} from '../types'
 
 export function FlowEditorPage() {
   return (
@@ -48,6 +55,7 @@ function FlowEditorWorkspace() {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [dependencyPlan, setDependencyPlan] = useState<FlowDependencyPublishPlanModel | null>(null)
   const [meta, setMeta] = useState({ name: code, description: '' })
   const subFlowCandidates = useMemo(
     () => definitions
@@ -260,6 +268,44 @@ function FlowEditorWorkspace() {
     }
   }
 
+  async function preflightWithSubflows() {
+    if (!draftModel) {
+      return
+    }
+
+    try {
+      setBusy('dependency-preflight')
+      setError(null)
+      const plan = await api.preflightFlowWithDependencies(code, draftModel.revision)
+      setDependencyPlan(plan)
+    } catch (caught) {
+      const model = extractDesignError(caught)
+      setError(model ? `${model.errorCode}: ${model.detail}` : caught instanceof Error ? caught.message : 'Dependency preflight failed.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function publishWithSubflows() {
+    if (!draftModel) {
+      return
+    }
+
+    try {
+      setBusy('dependency-publish')
+      setError(null)
+      const result = await api.publishFlowWithDependencies(code, draftModel.revision)
+      setDependencyPlan(null)
+      setMessage(`Published ${result.versions.map((version) => `${version.code} v${version.versionNumber}`).join(', ')}.`)
+      await loadEditor()
+    } catch (caught) {
+      const model = extractDesignError(caught)
+      setError(model ? `${model.errorCode}: ${model.detail}` : caught instanceof Error ? caught.message : 'Dependency publish failed.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   function removeSelectedNode() {
     if (!selectedNode) {
       return
@@ -290,6 +336,10 @@ function FlowEditorWorkspace() {
             <button className="primary-button" type="button" onClick={() => void publishDraft()}>
               <Link2 size={16} />
               <span>{busy === 'publish' ? 'Publishing…' : 'Publish'}</span>
+            </button>
+            <button className="secondary-button" type="button" onClick={() => void preflightWithSubflows()}>
+              <Network size={16} />
+              <span>{busy === 'dependency-preflight' ? 'Checking…' : 'Publish with subflows'}</span>
             </button>
           </div>
         }
@@ -606,6 +656,44 @@ function FlowEditorWorkspace() {
           </div>
         </section>
       </div>
+
+      {dependencyPlan ? (
+        <div className="modal-scrim" role="presentation">
+          <div className="modal-card" role="dialog" aria-modal="true" aria-label="Publish with subflows">
+            <div className="panel-header">
+              <h3>Publish with subflows</h3>
+              <button type="button" className="icon-button" aria-label="Close" onClick={() => setDependencyPlan(null)}>
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="version-list">
+                {dependencyPlan.publishOrder.map((entry) => (
+                  <div key={entry.code} className="version-row">
+                    <div>
+                      <strong>{entry.publishOrder}. {entry.code} r{entry.revision}</strong>
+                      <p>{entry.referencedBy.length ? `Referenced by ${entry.referencedBy.join(', ')}` : 'Root flow'}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {dependencyPlan.warnings.map((warning) => (
+                <div key={`${warning.code}-${warning.warningCode}`} className="inline-note danger">
+                  {warning.detail}
+                </div>
+              ))}
+            </div>
+            <div className="modal-actions">
+              <button className="secondary-button" type="button" onClick={() => setDependencyPlan(null)}>
+                Cancel
+              </button>
+              <button className="primary-button" type="button" onClick={() => void publishWithSubflows()}>
+                {busy === 'dependency-publish' ? 'Publishing…' : 'Confirm publish'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
