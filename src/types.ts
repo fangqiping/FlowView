@@ -130,6 +130,25 @@ export interface FlowDraftModel {
   updatedBy?: string | null
 }
 
+export interface FlowDefinitionSummaryModel {
+  code: string
+  name: string
+  description?: string | null
+  status: string
+  activeVersionNumber?: number | null
+  activeRuntimeFlowId?: string | null
+  createdAt: string
+  updatedAt: string
+  createdBy?: string | null
+  updatedBy?: string | null
+}
+
+export interface CreateFlowDefinitionModel {
+  code: string
+  name: string
+  description?: string | null
+}
+
 export interface PutFlowDraftModel {
   name: string
   description?: string | null
@@ -159,6 +178,37 @@ export interface FlowPreflightModel {
   code: string
   sourceDraftRevision: number
   compiledGraphJson: string
+}
+
+export interface FlowDependencyPublishEntryModel {
+  code: string
+  revision: number
+  publishOrder: number
+  referencedBy: string[]
+}
+
+export interface FlowDependencyWarningModel {
+  code: string
+  warningCode: string
+  detail: string
+}
+
+export interface FlowDependencyPublishPlanModel {
+  rootCode: string
+  publishOrder: FlowDependencyPublishEntryModel[]
+  warnings: FlowDependencyWarningModel[]
+}
+
+export interface FlowDependencyVersionModel {
+  code: string
+  versionNumber: number
+  runtimeFlowId: string
+  sourceDraftRevision: number
+}
+
+export interface FlowDependencyPublishResultModel {
+  rootCode: string
+  versions: FlowDependencyVersionModel[]
 }
 
 export interface FlowDesignLocationModel {
