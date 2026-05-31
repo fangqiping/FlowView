@@ -1,4 +1,4 @@
-import { Background, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow, type Edge } from '@xyflow/react'
+import { Background, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { AlertTriangle, CheckCircle2, ExternalLink, Link2, Network, Plus, RefreshCcw, Save, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -23,6 +23,7 @@ import {
   type FlowNodeData,
 } from '../lib/flowDraft'
 import { findSubFlowCandidate } from '../lib/subflowBindings'
+import { emptyOutgoingRoute, getOutgoingRoute, replaceOutgoingRoute, type OutgoingRouteMode, type OutgoingRouteState } from '../lib/routeEditor'
 import type {
   DraftBinding,
   DraftVariable,
@@ -50,7 +51,7 @@ function FlowEditorWorkspace() {
   const [definitions, setDefinitions] = useState<FlowDefinitionSummaryModel[]>([])
   const [variables, setVariables] = useState<DraftVariable[]>([])
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>([])
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
+  const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>([])
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -74,6 +75,22 @@ function FlowEditorWorkspace() {
       ? findSubFlowCandidate(selectedNode.data.flowId, definitions, catalog)
       : null,
     [selectedNode, definitions, catalog],
+  )
+  const selectedOutgoingRoute = useMemo(
+    () => selectedNode ? getOutgoingRoute(edges, selectedNode.id) : emptyOutgoingRoute(),
+    [edges, selectedNode],
+  )
+  const editableTargetNodes = useMemo(
+    () => nodes.filter((node) => node.id !== selectedNode?.id && node.id !== ROOT_NODE_ID),
+    [nodes, selectedNode],
+  )
+  const boolVariables = useMemo(
+    () => variables.filter((variable) => variable.type.toLowerCase() === 'bool' || variable.type.toLowerCase() === 'boolean'),
+    [variables],
+  )
+  const intVariables = useMemo(
+    () => variables.filter((variable) => variable.type.toLowerCase() === 'int' || variable.type.toLowerCase() === 'int32'),
+    [variables],
   )
 
   useEffect(() => {
@@ -315,6 +332,77 @@ function FlowEditorWorkspace() {
     setSelectedNodeId(null)
   }
 
+  function updateSelectedOutgoingRoute(patch: Partial<OutgoingRouteState>) {
+    if (!selectedNode) {
+      return
+    }
+
+    const nextRoute = normalizeOutgoingRoute({ ...selectedOutgoingRoute, ...patch })
+    setEdges((current) => replaceOutgoingRoute(current, selectedNode.id, nextRoute))
+  }
+
+  function updateRouteMode(mode: OutgoingRouteMode) {
+    const firstTarget = selectedOutgoingRoute.directTargets[0] ?? editableTargetNodes[0]?.id ?? ''
+    if (mode === 'condition') {
+      updateSelectedOutgoingRoute({
+        mode,
+        condition: boolVariables[0]?.id ?? '',
+        trueTarget: firstTarget,
+        falseTarget: '',
+        directTargets: [],
+        switchTargets: [],
+      })
+      return
+    }
+
+    if (mode === 'switch') {
+      updateSelectedOutgoingRoute({
+        mode,
+        condition: intVariables[0]?.id ?? '',
+        switchTargets: selectedOutgoingRoute.directTargets.length ? selectedOutgoingRoute.directTargets : [firstTarget],
+        directTargets: [],
+        trueTarget: '',
+        falseTarget: '',
+      })
+      return
+    }
+
+    updateSelectedOutgoingRoute({
+      mode,
+      condition: '',
+      directTargets: selectedOutgoingRoute.trueTarget ? [selectedOutgoingRoute.trueTarget] : selectedOutgoingRoute.switchTargets,
+      trueTarget: '',
+      falseTarget: '',
+      switchTargets: [],
+    })
+  }
+
+  function normalizeOutgoingRoute(route: OutgoingRouteState): OutgoingRouteState {
+    if (route.mode === 'condition') {
+      return { ...route, directTargets: [], switchTargets: [] }
+    }
+    if (route.mode === 'switch') {
+      return { ...route, directTargets: [], trueTarget: '', falseTarget: '' }
+    }
+    return { ...route, condition: '', trueTarget: '', falseTarget: '', switchTargets: [] }
+  }
+
+  function updateSwitchTarget(index: number, target: string) {
+    updateSelectedOutgoingRoute({
+      switchTargets: selectedOutgoingRoute.switchTargets.map((item, itemIndex) => itemIndex === index ? target : item),
+    })
+  }
+
+  function appendSwitchTarget() {
+    updateSelectedOutgoingRoute({ switchTargets: [...selectedOutgoingRoute.switchTargets, ''] })
+  }
+
+  function removeSwitchTarget(index: number) {
+    updateSelectedOutgoingRoute({
+      switchTargets: selectedOutgoingRoute.switchTargets.filter((_, itemIndex) => itemIndex !== index),
+    })
+  }
+
   return (
     <div className="page flow-editor-page">
       <PageHeader
@@ -524,6 +612,126 @@ function FlowEditorWorkspace() {
                     />
                   </label>
                 )}
+              </div>
+
+              <div className="library-section route-editor-section">
+                <div className="panel-header nested">
+                  <h4>Outgoing routes</h4>
+                  <span>{selectedOutgoingRoute.mode}</span>
+                </div>
+                <div className="route-editor-grid">
+                  <label>
+                    <span>Route mode</span>
+                    <select
+                      aria-label="Route mode"
+                      value={selectedOutgoingRoute.mode}
+                      onChange={(event) => updateRouteMode(event.target.value as OutgoingRouteMode)}
+                    >
+                      <option value="direct">Direct</option>
+                      <option value="condition">Condition</option>
+                      <option value="switch">Switch</option>
+                    </select>
+                  </label>
+                  {selectedOutgoingRoute.mode === 'condition' ? (
+                    <>
+                      <label>
+                        <span>Condition variable</span>
+                        <select
+                          aria-label="Condition variable"
+                          value={selectedOutgoingRoute.condition}
+                          onChange={(event) => updateSelectedOutgoingRoute({ condition: event.target.value })}
+                        >
+                          <option value="">Select bool variable</option>
+                          {boolVariables.map((variable) => (
+                            <option key={variable.id} value={variable.id}>{variable.id}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span>True target</span>
+                        <select
+                          aria-label="True target"
+                          value={selectedOutgoingRoute.trueTarget}
+                          onChange={(event) => updateSelectedOutgoingRoute({ trueTarget: event.target.value })}
+                        >
+                          <option value="">No true target</option>
+                          {editableTargetNodes.map((node) => (
+                            <option key={node.id} value={node.id}>{node.id}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span>False target</span>
+                        <select
+                          aria-label="False target"
+                          value={selectedOutgoingRoute.falseTarget}
+                          onChange={(event) => updateSelectedOutgoingRoute({ falseTarget: event.target.value })}
+                        >
+                          <option value="">No false target</option>
+                          {editableTargetNodes.map((node) => (
+                            <option key={node.id} value={node.id}>{node.id}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </>
+                  ) : null}
+                  {selectedOutgoingRoute.mode === 'direct' ? (
+                    <label>
+                      <span>Target</span>
+                      <select
+                        aria-label="Direct target"
+                        value={selectedOutgoingRoute.directTargets[0] ?? ''}
+                        onChange={(event) => updateSelectedOutgoingRoute({ directTargets: event.target.value ? [event.target.value] : [] })}
+                      >
+                        <option value="">No target</option>
+                        {editableTargetNodes.map((node) => (
+                          <option key={node.id} value={node.id}>{node.id}</option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  {selectedOutgoingRoute.mode === 'switch' ? (
+                    <>
+                      <label>
+                        <span>Switch variable</span>
+                        <select
+                          aria-label="Switch variable"
+                          value={selectedOutgoingRoute.condition}
+                          onChange={(event) => updateSelectedOutgoingRoute({ condition: event.target.value })}
+                        >
+                          <option value="">Select int variable</option>
+                          {intVariables.map((variable) => (
+                            <option key={variable.id} value={variable.id}>{variable.id}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <div className="route-case-list">
+                        {selectedOutgoingRoute.switchTargets.map((target, index) => (
+                          <label key={`${index}-${target}`}>
+                            <span>Case {index}</span>
+                            <select
+                              aria-label={`Case ${index} target`}
+                              value={target}
+                              onChange={(event) => updateSwitchTarget(index, event.target.value)}
+                            >
+                              <option value="">No target</option>
+                              {editableTargetNodes.map((node) => (
+                                <option key={node.id} value={node.id}>{node.id}</option>
+                              ))}
+                            </select>
+                            <button className="icon-button" type="button" aria-label={`Remove case ${index}`} onClick={() => removeSwitchTarget(index)}>
+                              <Trash2 size={16} />
+                            </button>
+                          </label>
+                        ))}
+                        <button className="secondary-button" type="button" onClick={appendSwitchTarget}>
+                          <Plus size={16} />
+                          <span>Add case</span>
+                        </button>
+                      </div>
+                    </>
+                  ) : null}
+                </div>
               </div>
 
               {selectedNode.data.kind === 'subflow' ? (
