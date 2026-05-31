@@ -250,6 +250,64 @@ describe('FlowEditorPage subflows', () => {
       { type: 0, source: 'CheckInventory', targets: ['StorePallet', 'RejectPallet'], kind: 1, condition: 'CanStore' },
     ]))
   })
+
+  it('edits switch routes and keeps ordered case targets', async () => {
+    vi.mocked(api.getFlowDefinitions).mockResolvedValue([])
+    vi.mocked(api.getFlowCatalog).mockResolvedValue({
+      operations: [],
+      subFlowTemplates: [],
+      variableTypes: [],
+      expressionOperators: [],
+    })
+    vi.mocked(api.getFlowDraft).mockResolvedValue({
+      code: 'switch-flow',
+      name: 'Switch Flow',
+      revision: 1,
+      updatedAt: '',
+      draftDocumentJson: JSON.stringify({
+        id: 'SwitchFlow',
+        variables: [
+          { id: 'BranchIndex', type: 'int', usage: 'inputOutput', initialValue: 0 },
+        ],
+        nodes: [
+          baseDraftNode('DecideRoute'),
+          baseDraftNode('LaneA'),
+          baseDraftNode('LaneB'),
+        ],
+        routes: [],
+      }),
+    })
+    vi.mocked(api.saveFlowDraft).mockResolvedValue({
+      code: 'switch-flow',
+      name: 'Switch Flow',
+      revision: 2,
+      updatedAt: '',
+      draftDocumentJson: '{}',
+    })
+
+    render(
+      <MemoryRouter initialEntries={['/flows/switch-flow/editor']}>
+        <Routes>
+          <Route path="/flows/:code/editor" element={<FlowEditorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('Outgoing routes')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Route mode'), { target: { value: 'switch' } })
+    fireEvent.change(screen.getByLabelText('Switch variable'), { target: { value: 'BranchIndex' } })
+    fireEvent.change(screen.getByLabelText('Case 0 target'), { target: { value: 'LaneA' } })
+    fireEvent.click(screen.getByRole('button', { name: /add case/i }))
+    fireEvent.change(screen.getByLabelText('Case 1 target'), { target: { value: 'LaneB' } })
+    fireEvent.click(screen.getByRole('button', { name: /save draft/i }))
+
+    await waitFor(() => expect(api.saveFlowDraft).toHaveBeenCalled())
+    const saveInput = vi.mocked(api.saveFlowDraft).mock.calls[0][1]
+    const savedDocument = JSON.parse(saveInput.draftDocumentJson)
+    expect(savedDocument.routes).toEqual(expect.arrayContaining([
+      { type: 0, source: 'DecideRoute', targets: ['LaneA', 'LaneB'], kind: 2, condition: 'BranchIndex' },
+    ]))
+  })
 })
 
 function renderEditor() {

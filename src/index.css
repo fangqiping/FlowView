@@ -641,6 +641,42 @@ textarea:focus {
   align-items: center;
 }
 
+.route-editor-section {
+  border-top: 1px solid rgba(149, 161, 184, 0.1);
+}
+
+.panel-header.nested {
+  padding: 0 0 12px;
+  border-bottom: 0;
+}
+
+.route-editor-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.route-editor-grid label,
+.route-case-list label {
+  display: grid;
+  gap: 8px;
+}
+
+.route-editor-grid span,
+.route-case-list span {
+  color: #90a0bb;
+  font-size: 0.8rem;
+}
+
+.route-case-list {
+  display: grid;
+  gap: 10px;
+}
+
+.route-case-list label {
+  grid-template-columns: minmax(64px, 0.4fr) minmax(0, 1fr) auto;
+  align-items: center;
+}
+
 .spin {
   animation: spin 0.9s linear infinite;
 }

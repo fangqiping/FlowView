@@ -394,7 +394,10 @@ function FlowEditorWorkspace() {
   }
 
   function appendSwitchTarget() {
-    updateSelectedOutgoingRoute({ switchTargets: [...selectedOutgoingRoute.switchTargets, ''] })
+    const nextTarget = editableTargetNodes.find((node) => !selectedOutgoingRoute.switchTargets.includes(node.id))?.id
+      ?? editableTargetNodes[0]?.id
+      ?? ''
+    updateSelectedOutgoingRoute({ switchTargets: [...selectedOutgoingRoute.switchTargets, nextTarget] })
   }
 
   function removeSwitchTarget(index: number) {
