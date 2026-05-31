@@ -16,7 +16,17 @@ export interface FlowNodeData extends Record<string, unknown> {
 }
 
 export type FlowNode = Node<FlowNodeData>
-export type FlowEdge = Edge
+export type RouteKind = 'direct' | 'condition' | 'switch'
+export type RouteTargetRole = 'true' | 'false' | 'case'
+
+export interface FlowEdgeData extends Record<string, unknown> {
+  routeKind: RouteKind
+  routeCondition?: string
+  routeTargetIndex: number
+  routeTargetRole?: RouteTargetRole
+}
+
+export type FlowEdge = Edge<FlowEdgeData>
 
 export interface SubFlowNodeTemplate {
   code: string
@@ -28,6 +38,12 @@ export interface SubFlowNodeTemplate {
 
 export const ROOT_NODE_ID = 'Root'
 export const EDITOR_VARIABLE_TYPES = ['string', 'bool', 'int', 'long', 'float'] as const
+
+const ROUTE_KIND_TO_DRAFT_KIND: Record<RouteKind, DraftRoute['kind']> = {
+  direct: 0,
+  condition: 1,
+  switch: 2,
+}
 
 export const LOCAL_OPERATION_LIBRARY = [
   {
@@ -154,15 +170,12 @@ export function buildFlowGraph(document: DraftDocument): { nodes: FlowNode[]; ed
     },
   }))
 
-  const edges = document.routes.flatMap((route, routeIndex) =>
-    route.targets.map((target, targetIndex) => ({
-      id: `${route.source}-${target}-${routeIndex}-${targetIndex}`,
-      source: route.source,
-      target,
-      label: route.condition ?? undefined,
-      animated: route.source === ROOT_NODE_ID,
-    })),
-  )
+  const edges: FlowEdge[] = document.routes.flatMap((route) => {
+    const routeKind = toRouteKind(route.kind)
+    return route.targets.map((target, targetIndex) =>
+      createRouteEdge(route.source, target, routeKind, targetIndex, route.condition),
+    )
+  })
 
   return { nodes: [rootNode, ...nodes], edges }
 }
@@ -191,20 +204,40 @@ export function buildDraftDocument(
       flowId: node.data.kind === 'subflow' ? node.data.flowId : undefined,
     }))
 
-  const routes: DraftRoute[] = Object.values(
-    edges.reduce<Record<string, DraftRoute>>((acc, edge) => {
-      if (!acc[edge.source]) {
-        acc[edge.source] = {
-          type: 0,
-          source: edge.source,
-          targets: [],
-          kind: 0,
-        }
+  const routeGroups = edges.reduce<Record<string, {
+    source: string
+    routeKind: RouteKind
+    routeCondition?: string
+    targets: Array<{ target: string; index: number }>
+  }>>((acc, edge, fallbackIndex) => {
+    const data = edgeRouteData(edge, fallbackIndex)
+    const routeCondition = data.routeKind === 'direct' ? undefined : data.routeCondition
+    const key = `${edge.source}:${data.routeKind}:${routeCondition ?? ''}`
+    if (!acc[key]) {
+      acc[key] = {
+        source: edge.source,
+        routeKind: data.routeKind,
+        routeCondition,
+        targets: [],
       }
-      acc[edge.source].targets.push(edge.target)
-      return acc
-    }, {}),
-  )
+    }
+    acc[key].targets.push({ target: edge.target, index: data.routeTargetIndex })
+    return acc
+  }, {})
+
+  const routes: DraftRoute[] = Object.values(routeGroups).map((group) => {
+    const orderedTargets = group.targets
+      .sort((left, right) => left.index - right.index)
+      .map((item) => item.target)
+
+    return {
+      type: 0,
+      source: group.source,
+      targets: orderedTargets,
+      kind: ROUTE_KIND_TO_DRAFT_KIND[group.routeKind],
+      ...(group.routeKind === 'direct' ? {} : { condition: group.routeCondition ?? '' }),
+    }
+  })
 
   return {
     id: toPascalCase(name || code),
@@ -272,7 +305,77 @@ export function addSubFlowNode(
 }
 
 export function connectEdges(edges: FlowEdge[], connection: Connection): FlowEdge[] {
-  return addEdge({ ...connection, animated: connection.source === ROOT_NODE_ID }, edges)
+  if (!connection.source || !connection.target) {
+    return edges
+  }
+
+  const nextIndex = edges.filter((edge) => edge.source === connection.source).length
+  return addEdge(
+    createRouteEdge(connection.source, connection.target, 'direct', nextIndex),
+    edges,
+  )
+}
+
+function toRouteKind(kind: DraftRoute['kind'] | undefined): RouteKind {
+  if (kind === 1) {
+    return 'condition'
+  }
+  if (kind === 2) {
+    return 'switch'
+  }
+  return 'direct'
+}
+
+function routeLabel(routeKind: RouteKind, condition: string | null | undefined, targetIndex: number): string | undefined {
+  if (routeKind === 'condition' && condition) {
+    return `${condition}: ${targetIndex === 0 ? 'true' : 'false'}`
+  }
+  if (routeKind === 'switch' && condition) {
+    return `${condition}: ${targetIndex}`
+  }
+  return undefined
+}
+
+function routeTargetRole(routeKind: RouteKind, targetIndex: number): RouteTargetRole | undefined {
+  if (routeKind === 'condition') {
+    return targetIndex === 0 ? 'true' : 'false'
+  }
+  if (routeKind === 'switch') {
+    return 'case'
+  }
+  return undefined
+}
+
+export function createRouteEdge(
+  source: string,
+  target: string,
+  routeKind: RouteKind,
+  routeTargetIndex: number,
+  routeCondition?: string | null,
+): FlowEdge {
+  const condition = routeKind === 'direct' ? undefined : routeCondition ?? undefined
+  return {
+    id: `${source}-${target}-${routeKind}-${condition ?? 'direct'}-${routeTargetIndex}`,
+    source,
+    target,
+    label: routeLabel(routeKind, condition, routeTargetIndex),
+    animated: source === ROOT_NODE_ID,
+    data: {
+      routeKind,
+      routeCondition: condition,
+      routeTargetIndex,
+      routeTargetRole: routeTargetRole(routeKind, routeTargetIndex),
+    },
+  }
+}
+
+function edgeRouteData(edge: FlowEdge, fallbackIndex: number): FlowEdgeData {
+  return {
+    routeKind: edge.data?.routeKind ?? 'direct',
+    routeCondition: edge.data?.routeCondition,
+    routeTargetIndex: Number.isFinite(edge.data?.routeTargetIndex) ? Number(edge.data?.routeTargetIndex) : fallbackIndex,
+    routeTargetRole: edge.data?.routeTargetRole,
+  }
 }
 
 export function toPascalCase(input: string): string {
