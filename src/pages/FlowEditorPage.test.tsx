@@ -190,6 +190,124 @@ describe('FlowEditorPage subflows', () => {
     expect(api.publishFlowWithDependencies).toHaveBeenCalledWith('parent-flow', 5)
     expect(await screen.findByText(/published child-flow v3, parent-flow v6/i)).toBeTruthy()
   })
+
+  it('edits a selected node condition route and saves branch metadata', async () => {
+    vi.mocked(api.getFlowDefinitions).mockResolvedValue([])
+    vi.mocked(api.getFlowCatalog).mockResolvedValue({
+      operations: [],
+      subFlowTemplates: [],
+      variableTypes: [],
+      expressionOperators: [],
+    })
+    vi.mocked(api.getFlowDraft).mockResolvedValue({
+      code: 'branch-flow',
+      name: 'Branch Flow',
+      revision: 3,
+      updatedAt: '',
+      draftDocumentJson: JSON.stringify({
+        id: 'BranchFlow',
+        variables: [
+          { id: 'CanStore', type: 'bool', usage: 'inputOutput', initialValue: true },
+          { id: 'BranchIndex', type: 'int', usage: 'inputOutput', initialValue: 0 },
+        ],
+        nodes: [
+          baseDraftNode('CheckInventory'),
+          baseDraftNode('StorePallet'),
+          baseDraftNode('RejectPallet'),
+        ],
+        routes: [
+          { type: 0, source: 'CheckInventory', targets: ['StorePallet'], kind: 0 },
+        ],
+      }),
+    })
+    vi.mocked(api.saveFlowDraft).mockResolvedValue({
+      code: 'branch-flow',
+      name: 'Branch Flow',
+      revision: 4,
+      updatedAt: '',
+      draftDocumentJson: '{}',
+    })
+
+    render(
+      <MemoryRouter initialEntries={['/flows/branch-flow/editor']}>
+        <Routes>
+          <Route path="/flows/:code/editor" element={<FlowEditorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('Outgoing routes')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Route mode'), { target: { value: 'condition' } })
+    fireEvent.change(screen.getByLabelText('Condition variable'), { target: { value: 'CanStore' } })
+    fireEvent.change(screen.getByLabelText('True target'), { target: { value: 'StorePallet' } })
+    fireEvent.change(screen.getByLabelText('False target'), { target: { value: 'RejectPallet' } })
+    fireEvent.click(screen.getByRole('button', { name: /save draft/i }))
+
+    await waitFor(() => expect(api.saveFlowDraft).toHaveBeenCalled())
+    const saveInput = vi.mocked(api.saveFlowDraft).mock.calls[0][1]
+    const savedDocument = JSON.parse(saveInput.draftDocumentJson)
+    expect(savedDocument.routes).toEqual(expect.arrayContaining([
+      { type: 0, source: 'CheckInventory', targets: ['StorePallet', 'RejectPallet'], kind: 1, condition: 'CanStore' },
+    ]))
+  })
+
+  it('edits switch routes and keeps ordered case targets', async () => {
+    vi.mocked(api.getFlowDefinitions).mockResolvedValue([])
+    vi.mocked(api.getFlowCatalog).mockResolvedValue({
+      operations: [],
+      subFlowTemplates: [],
+      variableTypes: [],
+      expressionOperators: [],
+    })
+    vi.mocked(api.getFlowDraft).mockResolvedValue({
+      code: 'switch-flow',
+      name: 'Switch Flow',
+      revision: 1,
+      updatedAt: '',
+      draftDocumentJson: JSON.stringify({
+        id: 'SwitchFlow',
+        variables: [
+          { id: 'BranchIndex', type: 'int', usage: 'inputOutput', initialValue: 0 },
+        ],
+        nodes: [
+          baseDraftNode('DecideRoute'),
+          baseDraftNode('LaneA'),
+          baseDraftNode('LaneB'),
+        ],
+        routes: [],
+      }),
+    })
+    vi.mocked(api.saveFlowDraft).mockResolvedValue({
+      code: 'switch-flow',
+      name: 'Switch Flow',
+      revision: 2,
+      updatedAt: '',
+      draftDocumentJson: '{}',
+    })
+
+    render(
+      <MemoryRouter initialEntries={['/flows/switch-flow/editor']}>
+        <Routes>
+          <Route path="/flows/:code/editor" element={<FlowEditorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('Outgoing routes')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Route mode'), { target: { value: 'switch' } })
+    fireEvent.change(screen.getByLabelText('Switch variable'), { target: { value: 'BranchIndex' } })
+    fireEvent.change(screen.getByLabelText('Case 0 target'), { target: { value: 'LaneA' } })
+    fireEvent.click(screen.getByRole('button', { name: /add case/i }))
+    fireEvent.change(screen.getByLabelText('Case 1 target'), { target: { value: 'LaneB' } })
+    fireEvent.click(screen.getByRole('button', { name: /save draft/i }))
+
+    await waitFor(() => expect(api.saveFlowDraft).toHaveBeenCalled())
+    const saveInput = vi.mocked(api.saveFlowDraft).mock.calls[0][1]
+    const savedDocument = JSON.parse(saveInput.draftDocumentJson)
+    expect(savedDocument.routes).toEqual(expect.arrayContaining([
+      { type: 0, source: 'DecideRoute', targets: ['LaneA', 'LaneB'], kind: 2, condition: 'BranchIndex' },
+    ]))
+  })
 })
 
 function renderEditor() {
@@ -200,4 +318,19 @@ function renderEditor() {
       </Routes>
     </MemoryRouter>,
   )
+}
+
+function baseDraftNode(id: string) {
+  return {
+    id,
+    nodeType: 'Operation',
+    description: '',
+    shouldThrowOnFailed: true,
+    shouldThrowOnCanceled: true,
+    inputs: [],
+    outputs: [],
+    resourceOutputs: [],
+    consoleId: 'FunctionConsole',
+    operationTaskType: 'Backend.Demo.FunctionOperationTask',
+  }
 }
