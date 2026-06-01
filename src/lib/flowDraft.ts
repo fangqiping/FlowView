@@ -23,6 +23,7 @@ export interface FlowEdgeData extends Record<string, unknown> {
   routeKind: RouteKind
   routeCondition?: string
   routeTargetIndex: number
+  routeCaseValue?: number
   routeTargetRole?: RouteTargetRole
 }
 
@@ -173,7 +174,7 @@ export function buildFlowGraph(document: DraftDocument): { nodes: FlowNode[]; ed
   const edges: FlowEdge[] = document.routes.flatMap((route) => {
     const routeKind = toRouteKind(route.kind)
     return route.targets.map((target, targetIndex) =>
-      createRouteEdge(route.source, target, routeKind, targetIndex, route.condition),
+      createRouteEdge(route.source, target, routeKind, targetIndex, route.condition, route.caseValues?.[targetIndex]),
     )
   })
 
@@ -208,7 +209,7 @@ export function buildDraftDocument(
     source: string
     routeKind: RouteKind
     routeCondition?: string
-    targets: Array<{ target: string; index: number }>
+    targets: Array<{ target: string; index: number; caseValue?: number }>
   }>>((acc, edge, fallbackIndex) => {
     const data = edgeRouteData(edge, fallbackIndex)
     const routeCondition = data.routeKind === 'direct' ? undefined : data.routeCondition
@@ -221,20 +222,23 @@ export function buildDraftDocument(
         targets: [],
       }
     }
-    acc[key].targets.push({ target: edge.target, index: data.routeTargetIndex })
+    acc[key].targets.push({ target: edge.target, index: data.routeTargetIndex, caseValue: data.routeCaseValue })
     return acc
   }, {})
 
   const routes: DraftRoute[] = Object.values(routeGroups).map((group) => {
     const orderedTargets = group.targets
       .sort((left, right) => left.index - right.index)
-      .map((item) => item.target)
+    const targets = orderedTargets.map((item) => item.target)
 
     return {
       type: 0,
       source: group.source,
-      targets: orderedTargets,
+      targets,
       kind: ROUTE_KIND_TO_DRAFT_KIND[group.routeKind],
+      ...(group.routeKind === 'switch'
+        ? { caseValues: orderedTargets.map((item) => item.caseValue ?? item.index) }
+        : {}),
       ...(group.routeKind === 'direct' ? {} : { condition: group.routeCondition ?? '' }),
     }
   })
@@ -326,12 +330,12 @@ function toRouteKind(kind: DraftRoute['kind'] | undefined): RouteKind {
   return 'direct'
 }
 
-function routeLabel(routeKind: RouteKind, condition: string | null | undefined, targetIndex: number): string | undefined {
+function routeLabel(routeKind: RouteKind, condition: string | null | undefined, targetIndex: number, caseValue?: number): string | undefined {
   if (routeKind === 'condition' && condition) {
     return `${condition}: ${targetIndex === 0 ? 'true' : 'false'}`
   }
   if (routeKind === 'switch' && condition) {
-    return `${condition}: ${targetIndex}`
+    return `${condition}: ${caseValue ?? targetIndex}`
   }
   return undefined
 }
@@ -352,18 +356,20 @@ export function createRouteEdge(
   routeKind: RouteKind,
   routeTargetIndex: number,
   routeCondition?: string | null,
+  routeCaseValue?: number,
 ): FlowEdge {
   const condition = routeKind === 'direct' ? undefined : routeCondition ?? undefined
   return {
-    id: `${source}-${target}-${routeKind}-${condition ?? 'direct'}-${routeTargetIndex}`,
+    id: `${source}-${target}-${routeKind}-${condition ?? 'direct'}-${routeTargetIndex}-${routeCaseValue ?? 'index'}`,
     source,
     target,
-    label: routeLabel(routeKind, condition, routeTargetIndex),
+    label: routeLabel(routeKind, condition, routeTargetIndex, routeCaseValue),
     animated: source === ROOT_NODE_ID,
     data: {
       routeKind,
       routeCondition: condition,
       routeTargetIndex,
+      ...(routeKind === 'switch' ? { routeCaseValue: routeCaseValue ?? routeTargetIndex } : {}),
       routeTargetRole: routeTargetRole(routeKind, routeTargetIndex),
     },
   }
@@ -374,6 +380,7 @@ function edgeRouteData(edge: FlowEdge, fallbackIndex: number): FlowEdgeData {
     routeKind: edge.data?.routeKind ?? 'direct',
     routeCondition: edge.data?.routeCondition,
     routeTargetIndex: Number.isFinite(edge.data?.routeTargetIndex) ? Number(edge.data?.routeTargetIndex) : fallbackIndex,
+    routeCaseValue: Number.isFinite(edge.data?.routeCaseValue) ? Number(edge.data?.routeCaseValue) : undefined,
     routeTargetRole: edge.data?.routeTargetRole,
   }
 }

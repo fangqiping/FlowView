@@ -17,6 +17,7 @@ describe('routeEditor', () => {
       trueTarget: 'StorePallet',
       falseTarget: 'RejectPallet',
       switchTargets: [],
+      switchCaseValues: [],
     })
   })
 
@@ -31,12 +32,13 @@ describe('routeEditor', () => {
       trueTarget: '',
       falseTarget: '',
       switchTargets: ['ManualReview', 'RejectPallet'],
+      switchCaseValues: ['2', '7'],
     })
 
     expect(edges).toEqual(expect.arrayContaining([
       expect.objectContaining({ source: 'OtherNode', target: 'StorePallet' }),
-      expect.objectContaining({ source: 'CheckInventory', target: 'ManualReview', label: 'BranchIndex: 0' }),
-      expect.objectContaining({ source: 'CheckInventory', target: 'RejectPallet', label: 'BranchIndex: 1' }),
+      expect.objectContaining({ source: 'CheckInventory', target: 'ManualReview', label: 'BranchIndex: 2' }),
+      expect.objectContaining({ source: 'CheckInventory', target: 'RejectPallet', label: 'BranchIndex: 7' }),
     ]))
     expect(edges.some((edge) => edge.target === 'OldTarget')).toBe(false)
   })

@@ -412,6 +412,7 @@ export interface DraftRoute {
   type: number
   source: string
   targets: string[]
+  caseValues?: number[] | null
   kind: number
   condition?: string | null
 }

@@ -9,6 +9,7 @@ export interface OutgoingRouteState {
   trueTarget: string
   falseTarget: string
   switchTargets: string[]
+  switchCaseValues: string[]
 }
 
 export function emptyOutgoingRoute(mode: OutgoingRouteMode = 'direct'): OutgoingRouteState {
@@ -19,6 +20,7 @@ export function emptyOutgoingRoute(mode: OutgoingRouteMode = 'direct'): Outgoing
     trueTarget: '',
     falseTarget: '',
     switchTargets: [],
+    switchCaseValues: [],
   }
 }
 
@@ -43,6 +45,7 @@ export function getOutgoingRoute(edges: FlowEdge[], sourceId: string): OutgoingR
       trueTarget: outgoing[0]?.target ?? '',
       falseTarget: outgoing[1]?.target ?? '',
       switchTargets: [],
+      switchCaseValues: [],
     }
   }
 
@@ -54,6 +57,7 @@ export function getOutgoingRoute(edges: FlowEdge[], sourceId: string): OutgoingR
       trueTarget: '',
       falseTarget: '',
       switchTargets: outgoing.map((edge) => edge.target),
+      switchCaseValues: outgoing.map((edge, index) => String(edge.data?.routeCaseValue ?? edge.data?.routeTargetIndex ?? index)),
     }
   }
 
@@ -64,6 +68,7 @@ export function getOutgoingRoute(edges: FlowEdge[], sourceId: string): OutgoingR
     trueTarget: '',
     falseTarget: '',
     switchTargets: [],
+    switchCaseValues: [],
   }
 }
 
@@ -85,10 +90,19 @@ function createOutgoingEdges(sourceId: string, route: OutgoingRouteState): FlowE
   if (route.mode === 'switch') {
     return route.switchTargets
       .filter(Boolean)
-      .map((target, index) => createRouteEdge(sourceId, target, 'switch', index, route.condition))
+      .map((target, index) => createRouteEdge(sourceId, target, 'switch', index, route.condition, parseSwitchCaseValue(route.switchCaseValues[index], index)))
   }
 
   return route.directTargets
     .filter(Boolean)
     .map((target, index) => createRouteEdge(sourceId, target, 'direct', index))
+}
+
+function parseSwitchCaseValue(value: string | undefined, fallback: number): number {
+  if (value == null || value.trim() === '') {
+    return fallback
+  }
+
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
 }

@@ -656,13 +656,15 @@ textarea:focus {
 }
 
 .route-editor-grid label,
-.route-case-list label {
+.route-case-list label,
+.route-case-row {
   display: grid;
   gap: 8px;
 }
 
 .route-editor-grid span,
-.route-case-list span {
+.route-case-list span,
+.route-case-row span {
   color: #90a0bb;
   font-size: 0.8rem;
 }
@@ -672,8 +674,9 @@ textarea:focus {
   gap: 10px;
 }
 
-.route-case-list label {
-  grid-template-columns: minmax(64px, 0.4fr) minmax(0, 1fr) auto;
+.route-case-list label,
+.route-case-row {
+  grid-template-columns: minmax(64px, 0.35fr) minmax(84px, 0.45fr) minmax(0, 1fr) auto;
   align-items: center;
 }
 

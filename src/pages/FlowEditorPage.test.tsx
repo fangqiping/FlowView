@@ -296,8 +296,10 @@ describe('FlowEditorPage subflows', () => {
     expect(await screen.findByText('Outgoing routes')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Route mode'), { target: { value: 'switch' } })
     fireEvent.change(screen.getByLabelText('Switch variable'), { target: { value: 'BranchIndex' } })
+    fireEvent.change(screen.getByLabelText('Case 0 value'), { target: { value: '2' } })
     fireEvent.change(screen.getByLabelText('Case 0 target'), { target: { value: 'LaneA' } })
     fireEvent.click(screen.getByRole('button', { name: /add case/i }))
+    fireEvent.change(screen.getByLabelText('Case 1 value'), { target: { value: '7' } })
     fireEvent.change(screen.getByLabelText('Case 1 target'), { target: { value: 'LaneB' } })
     fireEvent.click(screen.getByRole('button', { name: /save draft/i }))
 
@@ -305,7 +307,7 @@ describe('FlowEditorPage subflows', () => {
     const saveInput = vi.mocked(api.saveFlowDraft).mock.calls[0][1]
     const savedDocument = JSON.parse(saveInput.draftDocumentJson)
     expect(savedDocument.routes).toEqual(expect.arrayContaining([
-      { type: 0, source: 'DecideRoute', targets: ['LaneA', 'LaneB'], kind: 2, condition: 'BranchIndex' },
+      { type: 0, source: 'DecideRoute', targets: ['LaneA', 'LaneB'], caseValues: [2, 7], kind: 2, condition: 'BranchIndex' },
     ]))
   })
 })

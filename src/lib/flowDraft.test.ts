@@ -83,15 +83,15 @@ describe('flowDraft branch routes', () => {
         id: 'switch-0',
         source: 'RejectPallet',
         target: 'ManualReview',
-        label: 'BranchIndex: 0',
-        data: { routeKind: 'switch', routeCondition: 'BranchIndex', routeTargetIndex: 0, routeTargetRole: 'case' },
+        label: 'BranchIndex: 2',
+        data: { routeKind: 'switch', routeCondition: 'BranchIndex', routeTargetIndex: 0, routeCaseValue: 2, routeTargetRole: 'case' },
       },
       {
         id: 'switch-1',
         source: 'RejectPallet',
         target: 'StorePallet',
-        label: 'BranchIndex: 1',
-        data: { routeKind: 'switch', routeCondition: 'BranchIndex', routeTargetIndex: 1, routeTargetRole: 'case' },
+        label: 'BranchIndex: 7',
+        data: { routeKind: 'switch', routeCondition: 'BranchIndex', routeTargetIndex: 1, routeCaseValue: 7, routeTargetRole: 'case' },
       },
       {
         id: 'root-direct',
@@ -105,8 +105,40 @@ describe('flowDraft branch routes', () => {
 
     expect(draft.routes).toEqual(expect.arrayContaining([
       { type: 0, source: 'CheckInventory', targets: ['StorePallet', 'RejectPallet'], kind: 1, condition: 'CanStore' },
-      { type: 0, source: 'RejectPallet', targets: ['ManualReview', 'StorePallet'], kind: 2, condition: 'BranchIndex' },
+      { type: 0, source: 'RejectPallet', targets: ['ManualReview', 'StorePallet'], caseValues: [2, 7], kind: 2, condition: 'BranchIndex' },
       { type: 0, source: ROOT_NODE_ID, targets: ['CheckInventory'], kind: 0 },
+    ]))
+  })
+
+  it('converts explicit switch case values into labels and edge metadata', () => {
+    const document: DraftDocument = {
+      id: 'BranchFlow',
+      variables,
+      nodes: [
+        baseNode('DecideRoute'),
+        baseNode('LaneA'),
+        baseNode('LaneB'),
+      ],
+      routes: [
+        { type: 0, source: 'DecideRoute', targets: ['LaneA', 'LaneB'], caseValues: [2, 7], kind: 2, condition: 'BranchIndex' },
+      ],
+    }
+
+    const { edges } = buildFlowGraph(document)
+
+    expect(edges).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        source: 'DecideRoute',
+        target: 'LaneA',
+        label: 'BranchIndex: 2',
+        data: expect.objectContaining({ routeKind: 'switch', routeCondition: 'BranchIndex', routeTargetIndex: 0, routeCaseValue: 2 }),
+      }),
+      expect.objectContaining({
+        source: 'DecideRoute',
+        target: 'LaneB',
+        label: 'BranchIndex: 7',
+        data: expect.objectContaining({ routeKind: 'switch', routeCondition: 'BranchIndex', routeTargetIndex: 1, routeCaseValue: 7 }),
+      }),
     ]))
   })
 })

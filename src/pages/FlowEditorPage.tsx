@@ -351,15 +351,18 @@ function FlowEditorWorkspace() {
         falseTarget: '',
         directTargets: [],
         switchTargets: [],
+        switchCaseValues: [],
       })
       return
     }
 
     if (mode === 'switch') {
+      const switchTargets = selectedOutgoingRoute.directTargets.length ? selectedOutgoingRoute.directTargets : [firstTarget]
       updateSelectedOutgoingRoute({
         mode,
         condition: intVariables[0]?.id ?? '',
-        switchTargets: selectedOutgoingRoute.directTargets.length ? selectedOutgoingRoute.directTargets : [firstTarget],
+        switchTargets,
+        switchCaseValues: switchTargets.map((_, index) => String(index)),
         directTargets: [],
         trueTarget: '',
         falseTarget: '',
@@ -374,17 +377,18 @@ function FlowEditorWorkspace() {
       trueTarget: '',
       falseTarget: '',
       switchTargets: [],
+      switchCaseValues: [],
     })
   }
 
   function normalizeOutgoingRoute(route: OutgoingRouteState): OutgoingRouteState {
     if (route.mode === 'condition') {
-      return { ...route, directTargets: [], switchTargets: [] }
+      return { ...route, directTargets: [], switchTargets: [], switchCaseValues: [] }
     }
     if (route.mode === 'switch') {
       return { ...route, directTargets: [], trueTarget: '', falseTarget: '' }
     }
-    return { ...route, condition: '', trueTarget: '', falseTarget: '', switchTargets: [] }
+    return { ...route, condition: '', trueTarget: '', falseTarget: '', switchTargets: [], switchCaseValues: [] }
   }
 
   function updateSwitchTarget(index: number, target: string) {
@@ -393,17 +397,38 @@ function FlowEditorWorkspace() {
     })
   }
 
+  function updateSwitchCaseValue(index: number, value: string) {
+    updateSelectedOutgoingRoute({
+      switchCaseValues: selectedOutgoingRoute.switchCaseValues.map((item, itemIndex) => itemIndex === index ? value : item),
+    })
+  }
+
   function appendSwitchTarget() {
     const nextTarget = editableTargetNodes.find((node) => !selectedOutgoingRoute.switchTargets.includes(node.id))?.id
       ?? editableTargetNodes[0]?.id
       ?? ''
-    updateSelectedOutgoingRoute({ switchTargets: [...selectedOutgoingRoute.switchTargets, nextTarget] })
+    updateSelectedOutgoingRoute({
+      switchTargets: [...selectedOutgoingRoute.switchTargets, nextTarget],
+      switchCaseValues: [...selectedOutgoingRoute.switchCaseValues, nextSwitchCaseValue()],
+    })
   }
 
   function removeSwitchTarget(index: number) {
     updateSelectedOutgoingRoute({
       switchTargets: selectedOutgoingRoute.switchTargets.filter((_, itemIndex) => itemIndex !== index),
+      switchCaseValues: selectedOutgoingRoute.switchCaseValues.filter((_, itemIndex) => itemIndex !== index),
     })
+  }
+
+  function nextSwitchCaseValue(): string {
+    const values = selectedOutgoingRoute.switchCaseValues
+      .map((value) => value.trim() === '' ? Number.NaN : Number(value))
+      .filter(Number.isFinite)
+    let candidate = values.length ? Math.max(...values) + 1 : selectedOutgoingRoute.switchTargets.length
+    while (values.includes(candidate)) {
+      candidate += 1
+    }
+    return String(candidate)
   }
 
   return (
@@ -710,8 +735,14 @@ function FlowEditorWorkspace() {
                       </label>
                       <div className="route-case-list">
                         {selectedOutgoingRoute.switchTargets.map((target, index) => (
-                          <label key={`${index}-${target}`}>
+                          <div className="route-case-row" key={`${index}-${selectedOutgoingRoute.switchCaseValues[index] ?? ''}-${target}`}>
                             <span>Case {index}</span>
+                            <input
+                              aria-label={`Case ${index} value`}
+                              type="number"
+                              value={selectedOutgoingRoute.switchCaseValues[index] ?? String(index)}
+                              onChange={(event) => updateSwitchCaseValue(index, event.target.value)}
+                            />
                             <select
                               aria-label={`Case ${index} target`}
                               value={target}
@@ -725,7 +756,7 @@ function FlowEditorWorkspace() {
                             <button className="icon-button" type="button" aria-label={`Remove case ${index}`} onClick={() => removeSwitchTarget(index)}>
                               <Trash2 size={16} />
                             </button>
-                          </label>
+                          </div>
                         ))}
                         <button className="secondary-button" type="button" onClick={appendSwitchTarget}>
                           <Plus size={16} />
