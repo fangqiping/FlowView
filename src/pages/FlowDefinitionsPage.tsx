@@ -2,11 +2,13 @@ import { AlertTriangle, CheckCircle2, ExternalLink, Plus, RefreshCcw, Rocket } f
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
+import { useI18n } from '../i18n/useI18n'
 import { api, ApiError, extractDesignError } from '../lib/api'
 import { buildCatalogSummary } from '../lib/flowCatalogSummary'
 import type { FlowCatalogModel, FlowDefinitionSummaryModel, FlowDraftModel, FlowVersionModel } from '../types'
 
 export function FlowDefinitionsPage() {
+  const { t } = useI18n()
   const [definitions, setDefinitions] = useState<FlowDefinitionSummaryModel[]>([])
   const [selectedCode, setSelectedCode] = useState('')
   const [draft, setDraft] = useState<FlowDraftModel | null>(null)
@@ -174,15 +176,15 @@ export function FlowDefinitionsPage() {
   return (
     <div className="page">
       <PageHeader
-        eyebrow="Design Runtime"
-        title="Flow Definitions"
+        eyebrow={t('flow.designRuntime')}
+        title={t('flow.definitionsTitle')}
         actions={
           <>
             <button className="primary-button" type="button" onClick={() => setCreateOpen(true)}>
               <Plus size={16} />
-              <span>New flow</span>
+              <span>{t('flow.newFlow')}</span>
             </button>
-            <button className="icon-button" type="button" aria-label="Refresh definitions" onClick={() => void loadDefinitions()}>
+            <button className="icon-button" type="button" aria-label={t('flow.refreshDefinitions')} onClick={() => void loadDefinitions()}>
               <RefreshCcw size={16} />
             </button>
           </>
@@ -195,8 +197,8 @@ export function FlowDefinitionsPage() {
       <div className="workspace-grid flow-definitions-grid">
         <section className="panel">
           <div className="panel-header">
-            <h3>Definition list</h3>
-            <span>{definitions.length} definitions</span>
+            <h3>{t('flow.definitionList')}</h3>
+            <span>{t('flow.definitionCount', { count: definitions.length })}</span>
           </div>
           <div className="stack-list">
             {definitions.map((definition) => (
@@ -217,16 +219,16 @@ export function FlowDefinitionsPage() {
                 )}
               </button>
             ))}
-            {definitions.length === 0 ? <div className="empty-panel">No flow definitions yet.</div> : null}
+            {definitions.length === 0 ? <div className="empty-panel">{t('flow.emptyDefinitions')}</div> : null}
           </div>
 
           {catalogSummary ? (
             <div className="catalog-summary">
-              <h4>Catalog summary</h4>
+              <h4>{t('flow.catalogSummary')}</h4>
               <div className="meta-grid compact">
-                <div><span className="meta-label">Operations</span><strong>{catalogSummary.operations}</strong></div>
-                <div><span className="meta-label">Subflows</span><strong>{catalogSummary.subflows}</strong></div>
-                <div><span className="meta-label">Variable types</span><strong>{catalogSummary.variableTypes}</strong></div>
+                <div><span className="meta-label">{t('flow.operations')}</span><strong>{catalogSummary.operations}</strong></div>
+                <div><span className="meta-label">{t('flow.subflows')}</span><strong>{catalogSummary.subflows}</strong></div>
+                <div><span className="meta-label">{t('flow.variableTypes')}</span><strong>{catalogSummary.variableTypes}</strong></div>
               </div>
             </div>
           ) : null}
@@ -235,27 +237,27 @@ export function FlowDefinitionsPage() {
         <section className="detail-column">
           <div className="panel">
             <div className="panel-header">
-              <h3>Draft</h3>
-              <span>{busy === 'loading' ? 'Loading…' : draft?.code ?? selectedCode}</span>
+              <h3>{t('flow.draft')}</h3>
+              <span>{busy === 'loading' ? t('common.loading') : draft?.code ?? selectedCode}</span>
             </div>
 
             {draft ? (
               <>
                 <div className="meta-grid">
                   <div>
-                    <span className="meta-label">Name</span>
+                    <span className="meta-label">{t('flow.name')}</span>
                     <strong>{draft.name}</strong>
                   </div>
                   <div>
-                    <span className="meta-label">Revision</span>
+                    <span className="meta-label">{t('flow.revision')}</span>
                     <strong>{draft.revision}</strong>
                   </div>
                   <div>
-                    <span className="meta-label">Updated</span>
+                    <span className="meta-label">{t('flow.updated')}</span>
                     <strong>{new Date(draft.updatedAt).toLocaleString()}</strong>
                   </div>
                   <div>
-                    <span className="meta-label">Editor</span>
+                    <span className="meta-label">{t('flow.editor')}</span>
                     <strong>{draft.updatedBy ?? '-'}</strong>
                   </div>
                 </div>
@@ -263,27 +265,27 @@ export function FlowDefinitionsPage() {
                 <div className="toolbar-row">
                   <button className="secondary-button" type="button" onClick={() => void runPreflight()}>
                     <CheckCircle2 size={16} />
-                    <span>{busy === 'preflight' ? 'Checking…' : 'Preflight'}</span>
+                    <span>{busy === 'preflight' ? t('flow.checking') : t('flow.preflight')}</span>
                   </button>
                   <button className="primary-button" type="button" onClick={() => void runPublish()}>
                     <Rocket size={16} />
-                    <span>{busy === 'publish' ? 'Publishing…' : 'Publish'}</span>
+                    <span>{busy === 'publish' ? t('flow.publishing') : t('flow.publish')}</span>
                   </button>
                   <Link className="secondary-button link-button" to={`/flows/${draft.code}/editor`}>
                     <ExternalLink size={16} />
-                    <span>Open editor</span>
+                    <span>{t('flow.openEditor')}</span>
                   </Link>
                 </div>
               </>
             ) : (
-              <div className="empty-panel">Unable to load draft for this code yet.</div>
+              <div className="empty-panel">{t('flow.unableToLoadDraft')}</div>
             )}
           </div>
 
           <div className="panel">
             <div className="panel-header">
-              <h3>Version history</h3>
-              <span>{versions.length} versions</span>
+              <h3>{t('flow.versionHistory')}</h3>
+              <span>{t('flow.versionCount', { count: versions.length })}</span>
             </div>
             <div className="version-list">
               {versions.map((version) => (
@@ -293,16 +295,16 @@ export function FlowDefinitionsPage() {
                     <p>{version.runtimeFlowId}</p>
                   </div>
                   <div className="version-actions">
-                    {version.isActive ? <span className="status-pill success">Active</span> : null}
+                    {version.isActive ? <span className="status-pill success">{t('flow.active')}</span> : null}
                     {!version.isActive ? (
                       <button className="inline-button" type="button" onClick={() => void activateVersion(version.versionNumber)}>
-                        {busy === `activate-${version.versionNumber}` ? 'Activating…' : 'Activate'}
+                        {busy === `activate-${version.versionNumber}` ? t('flow.activating') : t('flow.activate')}
                       </button>
                     ) : null}
                   </div>
                 </div>
               ))}
-              {versions.length === 0 ? <div className="empty-panel">No published versions yet.</div> : null}
+              {versions.length === 0 ? <div className="empty-panel">{t('flow.emptyVersions')}</div> : null}
             </div>
           </div>
         </section>
@@ -314,35 +316,35 @@ export function FlowDefinitionsPage() {
             className="modal-card"
             role="dialog"
             aria-modal="true"
-            aria-label="New flow"
+            aria-label={t('flow.newFlow')}
             onSubmit={(event) => {
               event.preventDefault()
               void createFlow()
             }}
           >
             <div className="panel-header">
-              <h3>New flow</h3>
-              <button type="button" className="icon-button" aria-label="Close" onClick={() => setCreateOpen(false)}>
+              <h3>{t('flow.newFlow')}</h3>
+              <button type="button" className="icon-button" aria-label={t('common.close')} onClick={() => setCreateOpen(false)}>
                 ×
               </button>
             </div>
             <div className="modal-body form-grid">
               <label>
-                <span>Code</span>
+                <span>{t('flow.code')}</span>
                 <input
                   value={createInput.code}
                   onChange={(event) => setCreateInput((current) => ({ ...current, code: event.target.value }))}
                 />
               </label>
               <label>
-                <span>Name</span>
+                <span>{t('flow.name')}</span>
                 <input
                   value={createInput.name}
                   onChange={(event) => setCreateInput((current) => ({ ...current, name: event.target.value }))}
                 />
               </label>
               <label>
-                <span>Description</span>
+                <span>{t('flow.description')}</span>
                 <textarea
                   value={createInput.description}
                   onChange={(event) => setCreateInput((current) => ({ ...current, description: event.target.value }))}
@@ -351,14 +353,14 @@ export function FlowDefinitionsPage() {
             </div>
             <div className="modal-actions">
               <button type="button" className="secondary-button" onClick={() => setCreateOpen(false)}>
-                Cancel
+                {t('actions.cancel')}
               </button>
               <button
                 type="submit"
                 className="primary-button"
                 disabled={busy === 'create' || !createInput.code.trim() || !createInput.name.trim()}
               >
-                {busy === 'create' ? 'Creating…' : 'Create'}
+                {busy === 'create' ? t('flow.creating') : t('actions.create')}
               </button>
             </div>
           </form>

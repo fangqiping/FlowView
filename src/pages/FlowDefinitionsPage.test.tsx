@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { I18nProvider } from '../i18n/I18nProvider'
 import { api } from '../lib/api'
 import { FlowDefinitionsPage } from './FlowDefinitionsPage'
 
@@ -24,6 +25,7 @@ vi.mock('../lib/api', async () => {
 describe('FlowDefinitionsPage', () => {
   afterEach(() => {
     cleanup()
+    localStorage.clear()
     vi.clearAllMocks()
   })
 
@@ -53,9 +55,11 @@ describe('FlowDefinitionsPage', () => {
     })
 
     render(
-      <MemoryRouter>
-        <FlowDefinitionsPage />
-      </MemoryRouter>,
+      <I18nProvider>
+        <MemoryRouter>
+          <FlowDefinitionsPage />
+        </MemoryRouter>
+      </I18nProvider>,
     )
 
     expect((await screen.findAllByText('child-flow')).length).toBeGreaterThan(0)
@@ -97,9 +101,11 @@ describe('FlowDefinitionsPage', () => {
     vi.mocked(api.getFlowVersions).mockResolvedValue([])
 
     render(
-      <MemoryRouter>
-        <FlowDefinitionsPage />
-      </MemoryRouter>,
+      <I18nProvider>
+        <MemoryRouter>
+          <FlowDefinitionsPage />
+        </MemoryRouter>
+      </I18nProvider>,
     )
 
     fireEvent.click(await screen.findByRole('button', { name: /new flow/i }))
@@ -114,5 +120,28 @@ describe('FlowDefinitionsPage', () => {
         description: '',
       })
     })
+  })
+
+  it('renders translated flow definition actions', async () => {
+    localStorage.setItem('flowview.language', 'zh-Hans-CN')
+    vi.mocked(api.getFlowDefinitions).mockResolvedValue([])
+    vi.mocked(api.getFlowCatalog).mockResolvedValue({
+      operations: [],
+      subFlowTemplates: [],
+      variableTypes: [],
+      expressionOperators: [],
+    })
+
+    render(
+      <I18nProvider>
+        <MemoryRouter>
+          <FlowDefinitionsPage />
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+
+    expect(await screen.findByRole('button', { name: /新建流程/ })).toBeTruthy()
+    expect(screen.getByText('流程定义')).toBeTruthy()
+    expect(screen.getByText('暂无流程定义。')).toBeTruthy()
   })
 })

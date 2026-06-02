@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, ExternalLink, Link2, Network, Plus, Refres
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
+import { useI18n } from '../i18n/useI18n'
 import { api, extractDesignError } from '../lib/api'
 import { appendBinding, removeBinding, updateBinding } from '../lib/bindingEditor'
 import {
@@ -42,6 +43,7 @@ export function FlowEditorPage() {
 }
 
 function FlowEditorWorkspace() {
+  const { t } = useI18n()
   const { code = 'inbound-basic' } = useParams()
   const navigate = useNavigate()
   const reactFlow = useReactFlow<FlowNode, FlowEdge>()
@@ -434,8 +436,8 @@ function FlowEditorWorkspace() {
   return (
     <div className="page flow-editor-page">
       <PageHeader
-        eyebrow="Graph Designer"
-        title={`Flow Editor · ${code}`}
+        eyebrow={t('flow.graphDesigner')}
+        title={t('flow.editorTitle', { code })}
         actions={
           <div className="toolbar-row">
             <button className="icon-button" type="button" onClick={() => void loadEditor()}>
@@ -443,19 +445,19 @@ function FlowEditorWorkspace() {
             </button>
             <button className="secondary-button" type="button" onClick={() => void saveDraft()}>
               <Save size={16} />
-              <span>{busy === 'save' ? 'Saving…' : 'Save draft'}</span>
+              <span>{busy === 'save' ? t('flow.saving') : t('flow.saveDraft')}</span>
             </button>
             <button className="secondary-button" type="button" onClick={() => void preflightDraft()}>
               <CheckCircle2 size={16} />
-              <span>{busy === 'preflight' ? 'Checking…' : 'Preflight'}</span>
+              <span>{busy === 'preflight' ? t('flow.checking') : t('flow.preflight')}</span>
             </button>
             <button className="primary-button" type="button" onClick={() => void publishDraft()}>
               <Link2 size={16} />
-              <span>{busy === 'publish' ? 'Publishing…' : 'Publish'}</span>
+              <span>{busy === 'publish' ? t('flow.publishing') : t('flow.publish')}</span>
             </button>
             <button className="secondary-button" type="button" onClick={() => void preflightWithSubflows()}>
               <Network size={16} />
-              <span>{busy === 'dependency-preflight' ? 'Checking…' : 'Publish with subflows'}</span>
+              <span>{busy === 'dependency-preflight' ? t('flow.checking') : t('flow.publishWithSubflows')}</span>
             </button>
           </div>
         }
@@ -467,25 +469,25 @@ function FlowEditorWorkspace() {
       <div className="flow-editor-layout">
         <section className="panel editor-sidebar">
           <div className="panel-header">
-            <h3>Definition</h3>
+            <h3>{t('flow.definition')}</h3>
             <span>{draftModel?.revision ?? 0}</span>
           </div>
 
           <div className="form-grid compact">
             <label>
-              <span>Name</span>
+              <span>{t('flow.name')}</span>
               <input value={meta.name} onChange={(event) => setMeta((current) => ({ ...current, name: event.target.value }))} />
             </label>
             <label className="wide">
-              <span>Description</span>
+              <span>{t('flow.description')}</span>
               <textarea rows={3} value={meta.description} onChange={(event) => setMeta((current) => ({ ...current, description: event.target.value }))} />
             </label>
           </div>
 
           <div className="library-section">
             <div className="panel-header">
-              <h4>Node library</h4>
-              <span>Local + catalog</span>
+              <h4>{t('flow.nodeLibrary')}</h4>
+              <span>{t('flow.localCatalog')}</span>
             </div>
             <div className="stack-list">
               {LOCAL_OPERATION_LIBRARY.map((template) => (
@@ -511,7 +513,7 @@ function FlowEditorWorkspace() {
 
           <div className="library-section">
             <div className="panel-header">
-              <h4>Variables</h4>
+              <h4>{t('flow.variables')}</h4>
               <button className="icon-button" type="button" onClick={addVariable}>
                 <Plus size={16} />
               </button>
@@ -581,7 +583,7 @@ function FlowEditorWorkspace() {
 
         <section className="panel inspector-panel">
           <div className="panel-header">
-            <h3>Inspector</h3>
+            <h3>{t('flow.inspector')}</h3>
             {selectedNode ? (
               <button className="icon-button" type="button" onClick={removeSelectedNode}>
                 <Trash2 size={16} />
@@ -593,7 +595,7 @@ function FlowEditorWorkspace() {
             <>
               <div className="form-grid compact">
                 <label>
-                  <span>Node id</span>
+                  <span>{t('flow.nodeId')}</span>
                   <input
                     value={selectedNode.id}
                     onChange={(event) =>
@@ -608,7 +610,7 @@ function FlowEditorWorkspace() {
                   />
                 </label>
                 <label>
-                  <span>Description</span>
+                  <span>{t('flow.description')}</span>
                   <input
                     value={selectedNode.data.description}
                     onChange={(event) => updateSelectedNode({ description: event.target.value })}
@@ -617,14 +619,14 @@ function FlowEditorWorkspace() {
                 {selectedNode.data.kind === 'operation' ? (
                   <>
                     <label>
-                      <span>Console</span>
+                      <span>{t('flow.console')}</span>
                       <input
                         value={selectedNode.data.consoleId}
                         onChange={(event) => updateSelectedNode({ consoleId: event.target.value })}
                       />
                     </label>
                     <label className="wide">
-                      <span>Operation task type</span>
+                      <span>{t('flow.operationTaskType')}</span>
                       <input
                         value={selectedNode.data.operationTaskType}
                         onChange={(event) => updateSelectedNode({ operationTaskType: event.target.value })}
@@ -633,7 +635,7 @@ function FlowEditorWorkspace() {
                   </>
                 ) : (
                   <label className="wide">
-                    <span>Child flow code</span>
+                    <span>{t('flow.childFlowCode')}</span>
                     <input
                       value={selectedNode.data.flowId}
                       onChange={(event) => updateSelectedNode({ flowId: event.target.value })}
@@ -644,58 +646,58 @@ function FlowEditorWorkspace() {
 
               <div className="library-section route-editor-section">
                 <div className="panel-header nested">
-                  <h4>Outgoing routes</h4>
+                  <h4>{t('flow.outgoingRoutes')}</h4>
                   <span>{selectedOutgoingRoute.mode}</span>
                 </div>
                 <div className="route-editor-grid">
                   <label>
-                    <span>Route mode</span>
+                    <span>{t('flow.routeMode')}</span>
                     <select
-                      aria-label="Route mode"
+                      aria-label={t('flow.routeMode')}
                       value={selectedOutgoingRoute.mode}
                       onChange={(event) => updateRouteMode(event.target.value as OutgoingRouteMode)}
                     >
-                      <option value="direct">Direct</option>
-                      <option value="condition">Condition</option>
-                      <option value="switch">Switch</option>
+                      <option value="direct">{t('flow.routeDirect')}</option>
+                      <option value="condition">{t('flow.routeCondition')}</option>
+                      <option value="switch">{t('flow.routeSwitch')}</option>
                     </select>
                   </label>
                   {selectedOutgoingRoute.mode === 'condition' ? (
                     <>
                       <label>
-                        <span>Condition variable</span>
+                        <span>{t('flow.conditionVariable')}</span>
                         <select
-                          aria-label="Condition variable"
+                          aria-label={t('flow.conditionVariable')}
                           value={selectedOutgoingRoute.condition}
                           onChange={(event) => updateSelectedOutgoingRoute({ condition: event.target.value })}
                         >
-                          <option value="">Select bool variable</option>
+                          <option value="">{t('flow.selectBoolVariable')}</option>
                           {boolVariables.map((variable) => (
                             <option key={variable.id} value={variable.id}>{variable.id}</option>
                           ))}
                         </select>
                       </label>
                       <label>
-                        <span>True target</span>
+                        <span>{t('flow.trueTarget')}</span>
                         <select
-                          aria-label="True target"
+                          aria-label={t('flow.trueTarget')}
                           value={selectedOutgoingRoute.trueTarget}
                           onChange={(event) => updateSelectedOutgoingRoute({ trueTarget: event.target.value })}
                         >
-                          <option value="">No true target</option>
+                          <option value="">{t('flow.noTrueTarget')}</option>
                           {editableTargetNodes.map((node) => (
                             <option key={node.id} value={node.id}>{node.id}</option>
                           ))}
                         </select>
                       </label>
                       <label>
-                        <span>False target</span>
+                        <span>{t('flow.falseTarget')}</span>
                         <select
-                          aria-label="False target"
+                          aria-label={t('flow.falseTarget')}
                           value={selectedOutgoingRoute.falseTarget}
                           onChange={(event) => updateSelectedOutgoingRoute({ falseTarget: event.target.value })}
                         >
-                          <option value="">No false target</option>
+                          <option value="">{t('flow.noFalseTarget')}</option>
                           {editableTargetNodes.map((node) => (
                             <option key={node.id} value={node.id}>{node.id}</option>
                           ))}
@@ -705,13 +707,13 @@ function FlowEditorWorkspace() {
                   ) : null}
                   {selectedOutgoingRoute.mode === 'direct' ? (
                     <label>
-                      <span>Target</span>
+                      <span>{t('flow.target')}</span>
                       <select
-                        aria-label="Direct target"
+                        aria-label={t('flow.directTarget')}
                         value={selectedOutgoingRoute.directTargets[0] ?? ''}
                         onChange={(event) => updateSelectedOutgoingRoute({ directTargets: event.target.value ? [event.target.value] : [] })}
                       >
-                        <option value="">No target</option>
+                        <option value="">{t('flow.noTarget')}</option>
                         {editableTargetNodes.map((node) => (
                           <option key={node.id} value={node.id}>{node.id}</option>
                         ))}
@@ -721,13 +723,13 @@ function FlowEditorWorkspace() {
                   {selectedOutgoingRoute.mode === 'switch' ? (
                     <>
                       <label>
-                        <span>Switch variable</span>
+                        <span>{t('flow.switchVariable')}</span>
                         <select
-                          aria-label="Switch variable"
+                          aria-label={t('flow.switchVariable')}
                           value={selectedOutgoingRoute.condition}
                           onChange={(event) => updateSelectedOutgoingRoute({ condition: event.target.value })}
                         >
-                          <option value="">Select int variable</option>
+                          <option value="">{t('flow.selectIntVariable')}</option>
                           {intVariables.map((variable) => (
                             <option key={variable.id} value={variable.id}>{variable.id}</option>
                           ))}
@@ -736,31 +738,31 @@ function FlowEditorWorkspace() {
                       <div className="route-case-list">
                         {selectedOutgoingRoute.switchTargets.map((target, index) => (
                           <div className="route-case-row" key={`${index}-${selectedOutgoingRoute.switchCaseValues[index] ?? ''}-${target}`}>
-                            <span>Case {index}</span>
+                            <span>{t('flow.caseLabel', { index })}</span>
                             <input
-                              aria-label={`Case ${index} value`}
+                              aria-label={t('flow.caseValue', { index })}
                               type="number"
                               value={selectedOutgoingRoute.switchCaseValues[index] ?? String(index)}
                               onChange={(event) => updateSwitchCaseValue(index, event.target.value)}
                             />
                             <select
-                              aria-label={`Case ${index} target`}
+                              aria-label={t('flow.caseTarget', { index })}
                               value={target}
                               onChange={(event) => updateSwitchTarget(index, event.target.value)}
                             >
-                              <option value="">No target</option>
+                              <option value="">{t('flow.noTarget')}</option>
                               {editableTargetNodes.map((node) => (
                                 <option key={node.id} value={node.id}>{node.id}</option>
                               ))}
                             </select>
-                            <button className="icon-button" type="button" aria-label={`Remove case ${index}`} onClick={() => removeSwitchTarget(index)}>
+                            <button className="icon-button" type="button" aria-label={t('flow.removeCase', { index })} onClick={() => removeSwitchTarget(index)}>
                               <Trash2 size={16} />
                             </button>
                           </div>
                         ))}
                         <button className="secondary-button" type="button" onClick={appendSwitchTarget}>
                           <Plus size={16} />
-                          <span>Add case</span>
+                          <span>{t('flow.addCase')}</span>
                         </button>
                       </div>
                     </>
@@ -771,17 +773,17 @@ function FlowEditorWorkspace() {
               {selectedNode.data.kind === 'subflow' ? (
                 <div className="library-section">
                   <div className="panel-header">
-                    <h4>Subflow contract</h4>
+                    <h4>{t('flow.subflowContract')}</h4>
                     {selectedSubFlowCandidate ? (
                       <button className="secondary-button" type="button" onClick={() => navigate(`/flows/${selectedSubFlowCandidate.code}/editor`)}>
                         <ExternalLink size={16} />
-                        <span>Open subflow</span>
+                        <span>{t('flow.openSubflow')}</span>
                       </button>
                     ) : null}
                   </div>
                   {selectedSubFlowCandidate ? (
                     <div className="stack-list">
-                      <h5>Inputs</h5>
+                      <h5>{t('flow.inputs')}</h5>
                       {selectedSubFlowCandidate.inputs.map((input) => (
                         <label key={input.id} className="binding-row">
                           <span>{input.id}</span>
@@ -789,15 +791,15 @@ function FlowEditorWorkspace() {
                             value={selectedNode.data.inputs.find((binding) => binding.destination === input.id)?.source ?? ''}
                             onChange={(event) => updateSubFlowInputBinding(input.id, event.target.value)}
                           >
-                            <option value="">Unbound</option>
+                            <option value="">{t('flow.unbound')}</option>
                             {variables.map((variable) => (
                               <option key={variable.id} value={variable.id}>{variable.id}</option>
                             ))}
                           </select>
                         </label>
                       ))}
-                      {selectedSubFlowCandidate.inputs.length === 0 ? <div className="empty-panel compact">No input contract.</div> : null}
-                      <h5>Outputs</h5>
+                      {selectedSubFlowCandidate.inputs.length === 0 ? <div className="empty-panel compact">{t('flow.noInputContract')}</div> : null}
+                      <h5>{t('flow.outputs')}</h5>
                       {selectedSubFlowCandidate.outputs.map((output) => (
                         <label key={output.id} className="binding-row">
                           <span>{output.id}</span>
@@ -805,17 +807,17 @@ function FlowEditorWorkspace() {
                             value={selectedNode.data.outputs.find((binding) => binding.source === output.id)?.destination ?? ''}
                             onChange={(event) => updateSubFlowOutputBinding(output.id, event.target.value)}
                           >
-                            <option value="">Unbound</option>
+                            <option value="">{t('flow.unbound')}</option>
                             {variables.map((variable) => (
                               <option key={variable.id} value={variable.id}>{variable.id}</option>
                             ))}
                           </select>
                         </label>
                       ))}
-                      {selectedSubFlowCandidate.outputs.length === 0 ? <div className="empty-panel compact">No output contract.</div> : null}
+                      {selectedSubFlowCandidate.outputs.length === 0 ? <div className="empty-panel compact">{t('flow.noOutputContract')}</div> : null}
                     </div>
                   ) : (
-                    <div className="empty-panel compact">No published signature found for this subflow code.</div>
+                    <div className="empty-panel compact">{t('flow.noSubflowSignature')}</div>
                   )}
                 </div>
               ) : null}
@@ -823,7 +825,7 @@ function FlowEditorWorkspace() {
               {selectedNode.data.kind === 'operation' ? (
                 <div className="library-section">
                 <div className="panel-header">
-                  <h4>Input bindings</h4>
+                  <h4>{t('flow.inputBindings')}</h4>
                   <button className="icon-button" type="button" onClick={() => appendNodeBinding('inputs')}>
                     <Plus size={16} />
                   </button>
@@ -846,14 +848,14 @@ function FlowEditorWorkspace() {
                       <Trash2 size={16} />
                     </button>
                   </div>
-                )) : <div className="empty-panel compact">No input bindings yet.</div>}
+                )) : <div className="empty-panel compact">{t('flow.noInputBindings')}</div>}
                 </div>
               ) : null}
 
               {selectedNode.data.kind === 'operation' ? (
                 <div className="library-section">
                 <div className="panel-header">
-                  <h4>Output bindings</h4>
+                  <h4>{t('flow.outputBindings')}</h4>
                   <button className="icon-button" type="button" onClick={() => appendNodeBinding('outputs')}>
                     <Plus size={16} />
                   </button>
@@ -876,24 +878,24 @@ function FlowEditorWorkspace() {
                       <Trash2 size={16} />
                     </button>
                   </div>
-                )) : <div className="empty-panel compact">No output bindings yet.</div>}
+                )) : <div className="empty-panel compact">{t('flow.noOutputBindings')}</div>}
                 </div>
               ) : null}
             </>
           ) : (
             <div className="empty-panel">
               <AlertTriangle size={20} />
-              <span>Select a node on the canvas to edit bindings and task metadata.</span>
+              <span>{t('flow.selectNodeHint')}</span>
             </div>
           )}
 
           <div className="library-section">
             <div className="panel-header">
-              <h4>Navigation</h4>
+              <h4>{t('flow.navigation')}</h4>
             </div>
             <button className="secondary-button" type="button" onClick={() => navigate('/flows')}>
               <Link2 size={16} />
-              <span>Back to definitions</span>
+              <span>{t('flow.backToDefinitions')}</span>
             </button>
           </div>
         </section>
@@ -901,10 +903,10 @@ function FlowEditorWorkspace() {
 
       {dependencyPlan ? (
         <div className="modal-scrim" role="presentation">
-          <div className="modal-card" role="dialog" aria-modal="true" aria-label="Publish with subflows">
+          <div className="modal-card" role="dialog" aria-modal="true" aria-label={t('flow.publishWithSubflows')}>
             <div className="panel-header">
-              <h3>Publish with subflows</h3>
-              <button type="button" className="icon-button" aria-label="Close" onClick={() => setDependencyPlan(null)}>
+              <h3>{t('flow.publishWithSubflows')}</h3>
+              <button type="button" className="icon-button" aria-label={t('common.close')} onClick={() => setDependencyPlan(null)}>
                 ×
               </button>
             </div>
@@ -927,10 +929,10 @@ function FlowEditorWorkspace() {
             </div>
             <div className="modal-actions">
               <button className="secondary-button" type="button" onClick={() => setDependencyPlan(null)}>
-                Cancel
+                {t('actions.cancel')}
               </button>
               <button className="primary-button" type="button" onClick={() => void publishWithSubflows()}>
-                {busy === 'dependency-publish' ? 'Publishing…' : 'Confirm publish'}
+                {busy === 'dependency-publish' ? t('flow.publishing') : t('flow.confirmPublish')}
               </button>
             </div>
           </div>

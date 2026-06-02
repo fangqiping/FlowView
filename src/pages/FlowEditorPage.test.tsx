@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { I18nProvider } from '../i18n/I18nProvider'
 import { api } from '../lib/api'
 import { FlowEditorPage } from './FlowEditorPage'
 
@@ -32,6 +33,7 @@ describe('FlowEditorPage subflows', () => {
 
   afterEach(() => {
     cleanup()
+    localStorage.clear()
     vi.clearAllMocks()
     vi.unstubAllGlobals()
   })
@@ -229,11 +231,13 @@ describe('FlowEditorPage subflows', () => {
     })
 
     render(
-      <MemoryRouter initialEntries={['/flows/branch-flow/editor']}>
-        <Routes>
-          <Route path="/flows/:code/editor" element={<FlowEditorPage />} />
-        </Routes>
-      </MemoryRouter>,
+      <I18nProvider>
+        <MemoryRouter initialEntries={['/flows/branch-flow/editor']}>
+          <Routes>
+            <Route path="/flows/:code/editor" element={<FlowEditorPage />} />
+          </Routes>
+        </MemoryRouter>
+      </I18nProvider>,
     )
 
     expect(await screen.findByText('Outgoing routes')).toBeTruthy()
@@ -286,11 +290,13 @@ describe('FlowEditorPage subflows', () => {
     })
 
     render(
-      <MemoryRouter initialEntries={['/flows/switch-flow/editor']}>
-        <Routes>
-          <Route path="/flows/:code/editor" element={<FlowEditorPage />} />
-        </Routes>
-      </MemoryRouter>,
+      <I18nProvider>
+        <MemoryRouter initialEntries={['/flows/switch-flow/editor']}>
+          <Routes>
+            <Route path="/flows/:code/editor" element={<FlowEditorPage />} />
+          </Routes>
+        </MemoryRouter>
+      </I18nProvider>,
     )
 
     expect(await screen.findByText('Outgoing routes')).toBeTruthy()
@@ -310,15 +316,53 @@ describe('FlowEditorPage subflows', () => {
       { type: 0, source: 'DecideRoute', targets: ['LaneA', 'LaneB'], caseValues: [2, 7], kind: 2, condition: 'BranchIndex' },
     ]))
   })
+
+  it('renders translated route editor labels', async () => {
+    localStorage.setItem('flowview.language', 'zh-Hans-CN')
+    vi.mocked(api.getFlowDefinitions).mockResolvedValue([])
+    vi.mocked(api.getFlowCatalog).mockResolvedValue({
+      operations: [],
+      variableTypes: [],
+      expressionOperators: [],
+      subFlowTemplates: [],
+    })
+    vi.mocked(api.getFlowDraft).mockResolvedValue({
+      code: 'branch-flow',
+      name: 'Branch Flow',
+      revision: 1,
+      updatedAt: '',
+      draftDocumentJson: JSON.stringify({
+        id: 'BranchFlow',
+        variables: [{ id: 'CanStore', type: 'bool', usage: 'inputOutput', initialValue: true }],
+        nodes: [baseDraftNode('CheckInventory'), baseDraftNode('StorePallet')],
+        routes: [],
+      }),
+    })
+
+    render(
+      <I18nProvider>
+        <MemoryRouter initialEntries={['/flows/branch-flow/editor']}>
+          <Routes>
+            <Route path="/flows/:code/editor" element={<FlowEditorPage />} />
+          </Routes>
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+
+    expect(await screen.findByText('出站路由')).toBeTruthy()
+    expect(screen.getByLabelText('路由模式')).toBeTruthy()
+  })
 })
 
 function renderEditor() {
   render(
-    <MemoryRouter initialEntries={['/flows/parent-flow/editor']}>
-      <Routes>
-        <Route path="/flows/:code/editor" element={<FlowEditorPage />} />
-      </Routes>
-    </MemoryRouter>,
+    <I18nProvider>
+      <MemoryRouter initialEntries={['/flows/parent-flow/editor']}>
+        <Routes>
+          <Route path="/flows/:code/editor" element={<FlowEditorPage />} />
+        </Routes>
+      </MemoryRouter>
+    </I18nProvider>,
   )
 }
 
