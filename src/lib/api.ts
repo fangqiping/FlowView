@@ -28,9 +28,16 @@ import type {
   SkuInputModel,
   WarehouseModel,
 } from '../types'
+import type { SupportedLanguage } from '../i18n/languages'
 import { buildPaginationQuery } from './masterData'
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:5086'
+
+let apiLanguage: SupportedLanguage = 'en-US'
+
+export function setApiLanguage(language: SupportedLanguage) {
+  apiLanguage = language
+}
 
 export class ApiError extends Error {
   status: number
@@ -48,10 +55,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (init?.body != null && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
+  headers.set('Accept-Language', apiLanguage)
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers,
     ...init,
+    headers,
   })
 
   const text = await response.text()
