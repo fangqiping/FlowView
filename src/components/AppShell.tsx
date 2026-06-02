@@ -1,9 +1,13 @@
-import { Boxes, ClipboardList, GitBranchPlus, MapPinned, Package2, PackageOpen, Tags, Workflow, type LucideIcon } from 'lucide-react'
+import { Bell, Boxes, ClipboardList, GitBranchPlus, MapPinned, Package2, PackageOpen, Tags, Workflow, type LucideIcon } from 'lucide-react'
+import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { SUPPORTED_LANGUAGES, canonicalizeLanguage } from '../i18n/languages'
 import type { MessageKey } from '../i18n/messages'
 import { useI18n } from '../i18n/useI18n'
 import { API_BASE_URL } from '../lib/api'
+import { NotificationCenterPanel } from '../notifications/NotificationCenterPanel'
+import { NotificationToast } from '../notifications/NotificationToast'
+import { useNotificationCenter } from '../notifications/NotificationCenterProvider'
 
 const navItems: Array<{ to: string; labelKey: MessageKey; icon: LucideIcon }> = [
   { to: '/orders/inbound', labelKey: 'nav.inboundOrders', icon: ClipboardList },
@@ -18,6 +22,8 @@ const navItems: Array<{ to: string; labelKey: MessageKey; icon: LucideIcon }> = 
 
 export function AppShell() {
   const { language, setLanguage, t } = useI18n()
+  const [messageCenterOpen, setMessageCenterOpen] = useState(false)
+  const { unreadCount } = useNotificationCenter()
   const backendLabel = getBackendLabel(API_BASE_URL)
 
   return (
@@ -45,6 +51,15 @@ export function AppShell() {
         </nav>
 
         <div className="sidebar-footer">
+          <button
+            className="icon-button message-center-button"
+            type="button"
+            aria-label={t('notifications.messages')}
+            onClick={() => setMessageCenterOpen((open) => !open)}
+          >
+            <Bell size={16} />
+            {unreadCount > 0 && <span className="message-badge">{unreadCount}</span>}
+          </button>
           <label className="language-select">
             <span>{t('language.label')}</span>
             <select value={language} onChange={(event) => setLanguage(canonicalizeLanguage(event.target.value))}>
@@ -63,6 +78,8 @@ export function AppShell() {
       <main className="content-area">
         <Outlet />
       </main>
+      {messageCenterOpen && <NotificationCenterPanel onClose={() => setMessageCenterOpen(false)} />}
+      <NotificationToast />
     </div>
   )
 }

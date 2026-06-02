@@ -5,6 +5,7 @@ import App from '../App'
 import { AppShell } from '../components/AppShell'
 import { MasterDataTable } from '../components/MasterDataTable'
 import { I18nProvider } from '../i18n/I18nProvider'
+import { NotificationCenterProvider } from '../notifications/NotificationCenterProvider'
 import { LocationsPage } from './LocationsPage'
 
 describe('MasterDataTable', () => {
@@ -131,11 +132,15 @@ describe('MasterDataTable', () => {
   })
 
   it('shows master-data navigation entries', () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ items: [] }), { status: 200 })))
+
     render(
       <I18nProvider>
-        <MemoryRouter>
-          <App />
-        </MemoryRouter>
+        <NotificationCenterProvider autoConnect={false}>
+          <MemoryRouter>
+            <App />
+          </MemoryRouter>
+        </NotificationCenterProvider>
       </I18nProvider>,
     )
 
@@ -146,11 +151,15 @@ describe('MasterDataTable', () => {
   })
 
   it('switches shell navigation language', () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ items: [] }), { status: 200 })))
+
     render(
       <I18nProvider>
-        <MemoryRouter>
-          <AppShell />
-        </MemoryRouter>
+        <NotificationCenterProvider autoConnect={false}>
+          <MemoryRouter>
+            <AppShell />
+          </MemoryRouter>
+        </NotificationCenterProvider>
       </I18nProvider>,
     )
 
