@@ -15,6 +15,7 @@ import type {
   InboundOrderModel,
   LocationModel,
   LocationInputModel,
+  NotificationModel,
   OrderKind,
   OutboundOrderModel,
   PublishFlowVersionModel,
@@ -37,6 +38,10 @@ let apiLanguage: SupportedLanguage = 'en-US'
 
 export function setApiLanguage(language: SupportedLanguage) {
   apiLanguage = language
+}
+
+export function getNotificationHubUrl() {
+  return `${API_BASE_URL}/hubs/notifications`
 }
 
 export class ApiError extends Error {
@@ -303,6 +308,16 @@ export const api = {
 
   async operationTaskAction(id: number, action: 'cancel' | 'skip' | 'restart') {
     return request<void>(`/api/OperationTask/${toActionSegment(action)}/${id}`, {
+      method: 'POST',
+    })
+  },
+
+  async getNotifications() {
+    return request<ContentResponse<NotificationModel>>('/api/Notifications?ShouldPaginate=false')
+  },
+
+  async confirmNotification(id: number) {
+    return request<void>(`/api/Notifications/${id}`, {
       method: 'POST',
     })
   },
