@@ -14,6 +14,7 @@ import { buildOrderResourceSummary } from '../lib/resourceSummary'
 import { useOrderTaskDetail } from '../lib/useOrderTaskDetail'
 import { PageHeader } from '../components/PageHeader'
 import { FlowTaskStatusPill, StatusPill } from '../components/StatusPill'
+import { useI18n } from '../i18n/useI18n'
 import type {
   CreateInboundOrderModel,
   CreateOutboundOrderModel,
@@ -29,6 +30,7 @@ import type {
 type OrderModel = InboundOrderModel | OutboundOrderModel
 
 export function OrdersPage({ kind }: { kind: OrderKind }) {
+  const { t } = useI18n()
   const [orders, setOrders] = useState<OrderModel[]>([])
   const [skus, setSkus] = useState<SkuModel[]>([])
   const [locations, setLocations] = useState<LocationModel[]>([])
@@ -260,14 +262,14 @@ export function OrdersPage({ kind }: { kind: OrderKind }) {
     }
   }
 
-  const title = kind === 'inbound' ? 'Inbound Orders' : 'Outbound Orders'
-  const locationLabel = kind === 'inbound' ? 'Target Rack' : 'Source Rack'
-  const siteLabel = kind === 'inbound' ? 'Source Station' : 'Destination Station'
+  const title = kind === 'inbound' ? t('orders.inboundTitle') : t('orders.outboundTitle')
+  const locationLabel = kind === 'inbound' ? t('orders.targetRack') : t('orders.sourceRack')
+  const siteLabel = kind === 'inbound' ? t('orders.sourceStation') : t('orders.destinationStation')
 
   return (
     <div className="page">
       <PageHeader
-        eyebrow="Warehouse Execution"
+        eyebrow={t('orders.eyebrow')}
         title={title}
         actions={
           <button className="icon-button" type="button" onClick={() => void loadPage()}>
@@ -282,18 +284,18 @@ export function OrdersPage({ kind }: { kind: OrderKind }) {
       <div className="workspace-grid">
         <section className="panel table-panel">
           <div className="panel-header">
-            <h3>Active queue</h3>
-            <span>{orders.length} orders</span>
+            <h3>{t('orders.activeQueue')}</h3>
+            <span>{t('orders.orderCount', { count: orders.length })}</span>
           </div>
           <div className="data-table-wrap">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Code</th>
-                  <th>Status</th>
-                  <th>Flow</th>
-                  <th>Task</th>
-                  <th>Updated</th>
+                  <th>{t('masterData.code')}</th>
+                  <th>{t('masterData.status')}</th>
+                  <th>{t('orders.flow')}</th>
+                  <th>{t('orders.task')}</th>
+                  <th>{t('orders.updated')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -312,7 +314,7 @@ export function OrdersPage({ kind }: { kind: OrderKind }) {
                 ))}
                 {orders.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="empty-cell">No orders yet.</td>
+                    <td colSpan={5} className="empty-cell">{t('orders.empty')}</td>
                   </tr>
                 ) : null}
               </tbody>
@@ -323,13 +325,13 @@ export function OrdersPage({ kind }: { kind: OrderKind }) {
         <section className="detail-column">
           <div className="panel">
             <div className="panel-header">
-              <h3>Create order</h3>
-              <span>{kind === 'inbound' ? 'IN flow' : 'OUT flow'}</span>
+              <h3>{t('orders.createOrder')}</h3>
+              <span>{kind === 'inbound' ? t('orders.inFlow') : t('orders.outFlow')}</span>
             </div>
 
             <div className="form-grid">
               <label>
-                <span>Order code</span>
+                <span>{t('orders.orderCode')}</span>
                 <input
                   value={form.code}
                   onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
@@ -346,7 +348,7 @@ export function OrdersPage({ kind }: { kind: OrderKind }) {
               </label>
 
               <label>
-                <span>SKU</span>
+                <span>{t('masterData.sku')}</span>
                 <select
                   value={form.skuId}
                   onChange={(event) => setForm((current) => ({ ...current, skuId: Number(event.target.value) }))}
@@ -374,7 +376,7 @@ export function OrdersPage({ kind }: { kind: OrderKind }) {
               </label>
 
               <label>
-                <span>Quantity</span>
+                <span>{t('masterData.quantity')}</span>
                 <input
                   type="number"
                   min={1}
@@ -384,7 +386,7 @@ export function OrdersPage({ kind }: { kind: OrderKind }) {
               </label>
 
               <label className="wide">
-                <span>Remark</span>
+                <span>{t('orders.remark')}</span>
                 <textarea
                   rows={3}
                   value={form.remark}
@@ -396,52 +398,52 @@ export function OrdersPage({ kind }: { kind: OrderKind }) {
             <div className="toolbar-row page-actions padded">
               <button className="primary-button" type="button" onClick={() => void createOrder()} disabled={busyAction !== null || !form.code}>
                 {busyAction === 'create' ? <LoaderCircle size={16} className="spin" /> : <Plus size={16} />}
-                <span>Create order</span>
+                <span>{t('orders.createOrder')}</span>
               </button>
               <button className="secondary-button" type="button" onClick={() => void createAndStartDemo()} disabled={busyAction !== null || skus.length === 0 || locations.length === 0}>
                 {busyAction === 'create-and-start' ? <LoaderCircle size={16} className="spin" /> : <Rocket size={16} />}
-                <span>Create &amp; Start Demo</span>
+                <span>{t('orders.createAndStartDemo')}</span>
               </button>
             </div>
           </div>
 
           <div className="panel">
             <div className="panel-header">
-              <h3>Selected order</h3>
-              <span>{selectedOrder?.code ?? 'None'}</span>
+              <h3>{t('orders.selectedOrder')}</h3>
+              <span>{selectedOrder?.code ?? t('masterData.none')}</span>
             </div>
 
             {selectedOrder ? (
               <>
                 <div className="meta-grid">
                   <div>
-                    <span className="meta-label">Status</span>
+                    <span className="meta-label">{t('masterData.status')}</span>
                     <StatusPill status={selectedOrder.status} />
                   </div>
                   <div>
-                    <span className="meta-label">Flow</span>
-                    <strong>{selectedOrder.flowDefinitionCode ?? 'Pending binding'}</strong>
+                    <span className="meta-label">{t('orders.flow')}</span>
+                    <strong>{selectedOrder.flowDefinitionCode ?? t('orders.pendingBinding')}</strong>
                   </div>
                   <div>
-                    <span className="meta-label">Version</span>
+                    <span className="meta-label">{t('orders.version')}</span>
                     <strong>{selectedOrder.flowVersionNumber ?? '-'}</strong>
                   </div>
                   <div>
-                    <span className="meta-label">Task</span>
+                    <span className="meta-label">{t('orders.task')}</span>
                     <strong>{selectedOrder.flowTaskId ?? '-'}</strong>
                   </div>
                   <div>
-                    <span className="meta-label">Task status</span>
+                    <span className="meta-label">{t('orders.taskStatus')}</span>
                     {selectedTask ? (
                       <FlowTaskStatusPill status={selectedTask.status} />
                     ) : selectedOrder.flowTaskId ? (
-                      <strong>{taskLoading ? 'Refreshing…' : 'Unavailable'}</strong>
+                      <strong>{taskLoading ? t('task.refreshing') : t('orders.unavailable')}</strong>
                     ) : (
-                      <strong>Idle</strong>
+                      <strong>{t('orders.idle')}</strong>
                     )}
                   </div>
                   <div>
-                    <span className="meta-label">Task finished</span>
+                    <span className="meta-label">{t('orders.taskFinished')}</span>
                     <strong>{formatDate(selectedTask?.finishedTime)}</strong>
                   </div>
                 </div>
@@ -451,34 +453,34 @@ export function OrdersPage({ kind }: { kind: OrderKind }) {
                 <div className="toolbar-row">
                   <button className="secondary-button" type="button" onClick={() => void runAction('submit')}>
                     <SendHorizonal size={16} />
-                    <span>{busyAction === 'submit' ? 'Submitting…' : 'Submit'}</span>
+                    <span>{busyAction === 'submit' ? t('orders.submitting') : t('orders.submit')}</span>
                   </button>
                   <button className="primary-button" type="button" onClick={() => void runAction('start-flow')}>
                     <Play size={16} />
-                    <span>{busyAction === 'start-flow' ? 'Starting…' : 'Start flow'}</span>
+                    <span>{busyAction === 'start-flow' ? t('orders.starting') : t('orders.startFlow')}</span>
                   </button>
                   <button className="secondary-button" type="button" onClick={() => void runAction('complete')}>
                     <SquareCheckBig size={16} />
-                    <span>Complete</span>
+                    <span>{t('orders.complete')}</span>
                   </button>
                   <button className="danger-button" type="button" onClick={() => void runAction('cancel')}>
                     <XCircle size={16} />
-                    <span>Cancel</span>
+                    <span>{t('actions.cancel')}</span>
                   </button>
                   {selectedOrder.flowTaskId ? (
                     <Link className="secondary-button" to={`/tasks/${selectedOrder.flowTaskId}`}>
-                      <span>Execution graph</span>
+                      <span>{t('orders.executionGraph')}</span>
                     </Link>
                   ) : null}
                 </div>
 
                 <div className="line-list">
-                  <h4>Lines</h4>
+                  <h4>{t('orders.lines')}</h4>
                   <ul>
                     {selectedOrder.lines.map((line) => (
                       <li key={line.id || `${line.skuId}-${selectedOrder.id}`}>
                         <span>SKU {line.skuId}</span>
-                        <span>Qty {line.quantity}</span>
+                        <span>{t('orders.qty')} {line.quantity}</span>
                       </li>
                     ))}
                   </ul>
@@ -487,7 +489,7 @@ export function OrdersPage({ kind }: { kind: OrderKind }) {
                 {resourceSummary ? <ResourceSummaryPanel summary={resourceSummary} /> : null}
 
                 <div className="line-list">
-                  <h4>Execution steps</h4>
+                  <h4>{t('orders.executionSteps')}</h4>
                   {executionSteps.length > 0 ? (
                     <ul className="execution-list">
                       {executionSteps.map((step) => (
@@ -502,13 +504,13 @@ export function OrdersPage({ kind }: { kind: OrderKind }) {
                     </ul>
                   ) : (
                     <div className="empty-panel compact">
-                      {selectedOrder.flowTaskId ? (taskLoading ? 'Refreshing execution details…' : 'No executable steps yet.') : 'Start a flow to see execution steps.'}
+                      {selectedOrder.flowTaskId ? (taskLoading ? t('orders.refreshingExecution') : t('orders.noExecutableSteps')) : t('orders.startFlowHint')}
                     </div>
                   )}
                 </div>
               </>
             ) : (
-              <div className="empty-panel">Select an order to inspect its flow binding and actions.</div>
+              <div className="empty-panel">{t('orders.selectHint')}</div>
             )}
           </div>
         </section>

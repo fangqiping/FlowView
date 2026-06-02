@@ -6,6 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ResourceSummaryPanel } from '../components/ResourceSummaryPanel'
 import { FlowTaskStatusPill } from '../components/StatusPill'
 import { PageHeader } from '../components/PageHeader'
+import { useI18n } from '../i18n/useI18n'
 import { api } from '../lib/api'
 import {
   buildExecutionGraph,
@@ -29,6 +30,7 @@ export function TaskExecutionPage() {
 }
 
 function TaskExecutionWorkspace() {
+  const { t } = useI18n()
   const navigate = useNavigate()
   const taskId = Number(useParams().id)
   const { task, loading, error, refresh } = useOrderTaskDetail({
@@ -144,13 +146,13 @@ function TaskExecutionWorkspace() {
   return (
     <div className="page task-execution-page">
       <PageHeader
-        eyebrow="Execution Trace"
-        title={`Flow Task ${Number.isFinite(taskId) ? taskId : '-'}`}
+        eyebrow={t('task.eyebrow')}
+        title={t('task.title', { id: Number.isFinite(taskId) ? taskId : '-' })}
         actions={
           <div className="toolbar-row">
             <button className="secondary-button" type="button" onClick={() => navigate(-1)}>
               <ArrowLeft size={16} />
-              <span>Back to orders</span>
+              <span>{t('task.backToOrders')}</span>
             </button>
             <button className="icon-button" type="button" onClick={() => void refresh()}>
               <RefreshCcw size={16} />
@@ -165,26 +167,26 @@ function TaskExecutionWorkspace() {
       <div className="flow-editor-layout execution-layout">
         <section className="panel editor-sidebar">
           <div className="panel-header">
-            <h3>Task summary</h3>
-            <span>{loading ? 'Refreshing…' : task?.flowId ?? 'Unknown flow'}</span>
+            <h3>{t('task.summary')}</h3>
+            <span>{loading ? t('task.refreshing') : task?.flowId ?? t('task.unknownFlow')}</span>
           </div>
           {task ? (
             <div className="line-list">
               <div className="meta-grid">
                 <div>
-                  <span className="meta-label">Status</span>
+                  <span className="meta-label">{t('masterData.status')}</span>
                   <FlowTaskStatusPill status={task.status} />
                 </div>
                 <div>
-                  <span className="meta-label">Flow</span>
+                  <span className="meta-label">{t('orders.flow')}</span>
                   <strong>{task.flowId}</strong>
                 </div>
                 <div>
-                  <span className="meta-label">Started</span>
+                  <span className="meta-label">{t('task.started')}</span>
                   <strong>{formatDate(task.startingTime)}</strong>
                 </div>
                 <div>
-                  <span className="meta-label">Finished</span>
+                  <span className="meta-label">{t('task.finished')}</span>
                   <strong>{formatDate(task.finishedTime)}</strong>
                 </div>
               </div>
@@ -201,7 +203,7 @@ function TaskExecutionWorkspace() {
               </div>
 
               <div className="line-list">
-                <h4>Execution nodes</h4>
+                <h4>{t('task.executionNodes')}</h4>
                 {graph.nodes.length > 0 ? (
                   <ul className="execution-list">
                     {graph.nodes.map((node) => (
@@ -219,12 +221,12 @@ function TaskExecutionWorkspace() {
                     ))}
                   </ul>
                 ) : (
-                  <div className="empty-panel compact">No execution nodes yet.</div>
+                  <div className="empty-panel compact">{t('task.noExecutionNodes')}</div>
                 )}
               </div>
             </div>
           ) : (
-            <div className="empty-panel">Waiting for task details…</div>
+            <div className="empty-panel">{t('task.waiting')}</div>
           )}
         </section>
 
@@ -242,38 +244,38 @@ function TaskExecutionWorkspace() {
 
         <section className="panel inspector-panel">
           <div className="panel-header">
-            <h3>Node detail</h3>
-            <span>{selectedNode?.data.label ?? 'None'}</span>
+            <h3>{t('task.nodeDetail')}</h3>
+            <span>{selectedNode?.data.label ?? t('masterData.none')}</span>
           </div>
           {selectedDetail ? (
             <div className="line-list">
               <div className="meta-grid">
                 <div>
-                  <span className="meta-label">Node</span>
+                  <span className="meta-label">{t('task.node')}</span>
                   <strong>{selectedDetail.nodeId}</strong>
                 </div>
                 <div>
-                  <span className="meta-label">Kind</span>
+                  <span className="meta-label">{t('task.kind')}</span>
                   <strong>{getExecutionNodeKindLabel(selectedDetail)}</strong>
                 </div>
                 <div>
-                  <span className="meta-label">Executable Id</span>
+                  <span className="meta-label">{t('task.executableId')}</span>
                   <strong>{selectedDetail.id}</strong>
                 </div>
                 <div>
-                  <span className="meta-label">Scheduled</span>
+                  <span className="meta-label">{t('task.scheduled')}</span>
                   <strong>{formatDate(selectedDetail.scheduledTime)}</strong>
                 </div>
                 <div>
-                  <span className="meta-label">Started</span>
+                  <span className="meta-label">{t('task.started')}</span>
                   <strong>{formatDate(selectedDetail.startingTime)}</strong>
                 </div>
                 <div>
-                  <span className="meta-label">Finished</span>
+                  <span className="meta-label">{t('task.finished')}</span>
                   <strong>{formatDate(selectedDetail.finishedTime)}</strong>
                 </div>
                 <div>
-                  <span className="meta-label">Status</span>
+                  <span className="meta-label">{t('masterData.status')}</span>
                   <FlowTaskStatusPill status={selectedDetail.status} />
                 </div>
               </div>
@@ -297,7 +299,7 @@ function TaskExecutionWorkspace() {
 
               {task?.variableEntities?.length ? (
                 <div className="line-list">
-                  <h4>Flow variables</h4>
+                  <h4>{t('task.flowVariables')}</h4>
                   <ul>
                     {task.variableEntities.map((variable) => (
                       <li key={variable.id}>
@@ -312,7 +314,7 @@ function TaskExecutionWorkspace() {
               {resourceSummary ? <ResourceSummaryPanel summary={resourceSummary} /> : null}
             </div>
           ) : (
-            <div className="empty-panel">Select an execution node to inspect it.</div>
+            <div className="empty-panel">{t('task.selectNodeHint')}</div>
           )}
         </section>
       </div>
@@ -329,11 +331,13 @@ function ActionButton({
   busy: boolean
   onClick: () => void
 }) {
+  const { t } = useI18n()
+
   if (action === 'cancel') {
     return (
       <button className="danger-button" type="button" disabled={busy} onClick={onClick}>
         <XCircle size={16} />
-        <span>{busy ? 'Canceling…' : 'Cancel'}</span>
+        <span>{busy ? t('task.canceling') : t('actions.cancel')}</span>
       </button>
     )
   }
@@ -342,7 +346,7 @@ function ActionButton({
     return (
       <button className="secondary-button" type="button" disabled={busy} onClick={onClick}>
         <SkipForward size={16} />
-        <span>{busy ? 'Skipping…' : 'Skip'}</span>
+        <span>{busy ? t('task.skipping') : t('task.skip')}</span>
       </button>
     )
   }
@@ -350,7 +354,7 @@ function ActionButton({
   return (
     <button className="secondary-button" type="button" disabled={busy} onClick={onClick}>
       <RotateCcw size={16} />
-      <span>{busy ? 'Retrying…' : 'Retry'}</span>
+      <span>{busy ? t('task.retrying') : t('task.retry')}</span>
     </button>
   )
 }
