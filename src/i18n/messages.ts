@@ -152,6 +152,22 @@ export type MessageKey =
   | 'masterData.editPallet'
   | 'masterData.newSku'
   | 'masterData.editSku'
+  | 'status.orderDraft'
+  | 'status.orderSubmitted'
+  | 'status.running'
+  | 'status.completed'
+  | 'status.canceled'
+  | 'status.failed'
+  | 'status.taskCreated'
+  | 'status.taskScheduled'
+  | 'status.taskStarting'
+  | 'status.taskFailing'
+  | 'status.taskCanceling'
+  | 'status.unknownStatus'
+  | 'status.unknownTask'
+  | 'resource.ruleMatch'
+  | 'resource.before'
+  | 'resource.after'
 
 export type Messages = Record<MessageKey, string>
 
