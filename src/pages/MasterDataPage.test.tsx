@@ -1,31 +1,65 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from '../App'
+import { AppShell } from '../components/AppShell'
 import { MasterDataTable } from '../components/MasterDataTable'
+import { I18nProvider } from '../i18n/I18nProvider'
 import { LocationsPage } from './LocationsPage'
 
 describe('MasterDataTable', () => {
+  afterEach(() => {
+    cleanup()
+    localStorage.clear()
+  })
+
   it('renders rows, pager state, and row actions', () => {
     render(
-      <MasterDataTable
-        columns={[{ key: 'code', label: 'Code' }]}
-        rows={[{ id: 1, code: 'RACK-A1', enabled: true }]}
-        pageIndex={1}
-        pageSize={20}
-        totalCount={41}
-        onPageChange={() => {}}
-        onPageSizeChange={() => {}}
-        onEdit={() => {}}
-        onDelete={() => {}}
-        onToggleEnabled={() => {}}
-      />,
+      <I18nProvider>
+        <MasterDataTable
+          columns={[{ key: 'code', label: 'Code' }]}
+          rows={[{ id: 1, code: 'RACK-A1', enabled: true }]}
+          pageIndex={1}
+          pageSize={20}
+          totalCount={41}
+          onPageChange={() => {}}
+          onPageSizeChange={() => {}}
+          onEdit={() => {}}
+          onDelete={() => {}}
+          onToggleEnabled={() => {}}
+        />
+      </I18nProvider>,
     )
 
     expect(screen.getByText('RACK-A1')).toBeTruthy()
     expect(screen.getByText('Page 1')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Edit' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Delete' })).toBeTruthy()
+  })
+
+  it('renders translated row action labels', () => {
+    localStorage.setItem('flowview.language', 'zh-Hans-CN')
+
+    render(
+      <I18nProvider>
+        <MasterDataTable
+          columns={[{ key: 'code', label: 'Code' }]}
+          rows={[{ id: 1, code: 'RACK-A1', enabled: true }]}
+          pageIndex={1}
+          pageSize={20}
+          totalCount={41}
+          onPageChange={() => {}}
+          onPageSizeChange={() => {}}
+          onEdit={() => {}}
+          onDelete={() => {}}
+          onToggleEnabled={() => {}}
+        />
+      </I18nProvider>,
+    )
+
+    expect(screen.getByRole('button', { name: '编辑' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '停用' })).toBeTruthy()
+    expect(screen.getByLabelText('每页数量')).toBeTruthy()
   })
 
   it('loads paged locations and opens the create dialog', async () => {
@@ -48,9 +82,11 @@ describe('MasterDataTable', () => {
     }
 
     render(
-      <MemoryRouter>
-        <LocationsPage apiOverride={api as never} />
-      </MemoryRouter>,
+      <I18nProvider>
+        <MemoryRouter>
+          <LocationsPage apiOverride={api as never} />
+        </MemoryRouter>
+      </I18nProvider>,
     )
 
     expect((await screen.findAllByText('RACK-A1')).length).toBeGreaterThan(0)
@@ -78,9 +114,11 @@ describe('MasterDataTable', () => {
     }
 
     render(
-      <MemoryRouter>
-        <LocationsPage apiOverride={api as never} />
-      </MemoryRouter>,
+      <I18nProvider>
+        <MemoryRouter>
+          <LocationsPage apiOverride={api as never} />
+        </MemoryRouter>
+      </I18nProvider>,
     )
 
     expect((await screen.findAllByText('RACK-A1')).length).toBeGreaterThan(0)
@@ -94,14 +132,31 @@ describe('MasterDataTable', () => {
 
   it('shows master-data navigation entries', () => {
     render(
-      <MemoryRouter>
-        <App />
-      </MemoryRouter>,
+      <I18nProvider>
+        <MemoryRouter>
+          <App />
+        </MemoryRouter>
+      </I18nProvider>,
     )
 
     expect(screen.getAllByText('Locations').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Ports').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Pallets').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Skus').length).toBeGreaterThan(0)
+  })
+
+  it('switches shell navigation language', () => {
+    render(
+      <I18nProvider>
+        <MemoryRouter>
+          <AppShell />
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText('Language'), { target: { value: 'zh-Hans-CN' } })
+
+    expect(screen.getByText('入库订单')).toBeTruthy()
+    expect(screen.getByText('流程定义')).toBeTruthy()
   })
 })

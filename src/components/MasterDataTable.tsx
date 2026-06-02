@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, Pencil, Power, Trash2 } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { useI18n } from '../i18n/useI18n'
 
 export interface MasterDataColumn<T> {
   key: keyof T | string
@@ -30,6 +31,7 @@ export function MasterDataTable<T extends { id: number; enabled?: boolean }>({
   onDelete: (row: T) => void
   onToggleEnabled?: (row: T) => void
 }) {
+  const { t } = useI18n()
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
 
   return (
@@ -41,7 +43,7 @@ export function MasterDataTable<T extends { id: number; enabled?: boolean }>({
               {columns.map((column) => (
                 <th key={String(column.key)}>{column.label}</th>
               ))}
-              <th>Actions</th>
+              <th>{t('table.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -56,20 +58,20 @@ export function MasterDataTable<T extends { id: number; enabled?: boolean }>({
                 ))}
                 <td>
                   <div className="row-actions">
-                    <button type="button" className="icon-button" aria-label="Edit" onClick={() => onEdit(row)}>
+                    <button type="button" className="icon-button" aria-label={t('table.edit')} onClick={() => onEdit(row)}>
                       <Pencil size={16} />
                     </button>
                     {onToggleEnabled && row.enabled !== undefined ? (
                       <button
                         type="button"
                         className="icon-button"
-                        aria-label={row.enabled ? 'Disable' : 'Enable'}
+                        aria-label={row.enabled ? t('table.disable') : t('table.enable')}
                         onClick={() => onToggleEnabled(row)}
                       >
                         <Power size={16} />
                       </button>
                     ) : null}
-                    <button type="button" className="icon-button" aria-label="Delete" onClick={() => onDelete(row)}>
+                    <button type="button" className="icon-button" aria-label={t('table.delete')} onClick={() => onDelete(row)}>
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -81,19 +83,19 @@ export function MasterDataTable<T extends { id: number; enabled?: boolean }>({
       </div>
 
       <div className="pager-bar">
-        <span>{`Page ${pageIndex}`}</span>
-        <select aria-label="Page size" value={pageSize} onChange={(event) => onPageSizeChange(Number(event.target.value))}>
+        <span>{t('table.page', { page: pageIndex })}</span>
+        <select aria-label={t('table.pageSize')} value={pageSize} onChange={(event) => onPageSizeChange(Number(event.target.value))}>
           {[10, 20, 50].map((size) => (
             <option key={size} value={size}>
-              {size} / page
+              {t('table.perPage', { size })}
             </option>
           ))}
         </select>
-        <span>{`${totalCount} items`}</span>
+        <span>{t('table.totalItems', { count: totalCount })}</span>
         <button
           type="button"
           className="icon-button"
-          aria-label="Previous page"
+          aria-label={t('table.previousPage')}
           disabled={pageIndex <= 1}
           onClick={() => onPageChange(pageIndex - 1)}
         >
@@ -102,7 +104,7 @@ export function MasterDataTable<T extends { id: number; enabled?: boolean }>({
         <button
           type="button"
           className="icon-button"
-          aria-label="Next page"
+          aria-label={t('table.nextPage')}
           disabled={pageIndex >= totalPages}
           onClick={() => onPageChange(pageIndex + 1)}
         >
