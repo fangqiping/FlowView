@@ -3,10 +3,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { MasterDataDialog } from '../components/MasterDataDialog'
 import { MasterDataTable, type MasterDataColumn } from '../components/MasterDataTable'
 import { PageHeader } from '../components/PageHeader'
+import { useI18n } from '../i18n/useI18n'
 import { api } from '../lib/api'
 import type { LocationInputModel, LocationModel, PalletModel, WarehouseModel } from '../types'
 
 export function LocationsPage({ apiOverride = api }: { apiOverride?: typeof api }) {
+  const { t } = useI18n()
   const [items, setItems] = useState<LocationModel[]>([])
   const [warehouses, setWarehouses] = useState<WarehouseModel[]>([])
   const [pallets, setPallets] = useState<PalletModel[]>([])
@@ -32,14 +34,14 @@ export function LocationsPage({ apiOverride = api }: { apiOverride?: typeof api 
   const palletMap = useMemo(() => new Map(pallets.map((item) => [item.id, item.code])), [pallets])
 
   const columns: MasterDataColumn<LocationModel>[] = [
-    { key: 'code', label: 'Code' },
-    { key: 'name', label: 'Name' },
-    { key: 'locationType', label: 'Type', render: (row) => toLocationTypeLabel(row.locationType) },
-    { key: 'status', label: 'Status', render: (row) => toLocationStatusLabel(row.status) },
-    { key: 'warehouseId', label: 'Warehouse', render: (row) => warehouseMap.get(row.warehouseId) ?? `#${row.warehouseId}` },
-    { key: 'currentPalletId', label: 'Current Pallet', render: (row) => row.currentPalletId ? (palletMap.get(row.currentPalletId) ?? `#${row.currentPalletId}`) : 'None' },
-    { key: 'enabled', label: 'Enabled', render: (row) => (row.enabled ? 'Yes' : 'No') },
-    { key: 'acquired', label: 'Acquired', render: (row) => (row.acquired ? 'Yes' : 'No') },
+    { key: 'code', label: t('masterData.code') },
+    { key: 'name', label: t('masterData.name') },
+    { key: 'locationType', label: t('masterData.type'), render: (row) => toLocationTypeLabel(row.locationType, t) },
+    { key: 'status', label: t('masterData.status'), render: (row) => toLocationStatusLabel(row.status, t) },
+    { key: 'warehouseId', label: t('masterData.warehouse'), render: (row) => warehouseMap.get(row.warehouseId) ?? `#${row.warehouseId}` },
+    { key: 'currentPalletId', label: t('masterData.currentPallet'), render: (row) => row.currentPalletId ? (palletMap.get(row.currentPalletId) ?? `#${row.currentPalletId}`) : t('masterData.none') },
+    { key: 'enabled', label: t('masterData.enabled'), render: (row) => (row.enabled ? t('masterData.yes') : t('masterData.no')) },
+    { key: 'acquired', label: t('masterData.acquired'), render: (row) => (row.acquired ? t('masterData.yes') : t('masterData.no')) },
   ]
 
   useEffect(() => {
@@ -154,16 +156,16 @@ export function LocationsPage({ apiOverride = api }: { apiOverride?: typeof api 
   return (
     <div className="page">
       <PageHeader
-        eyebrow="Master Data"
-        title="Locations"
+        eyebrow={t('masterData.eyebrow')}
+        title={t('masterData.locations')}
         actions={
           <>
-            <button className="icon-button" type="button" aria-label="Refresh" onClick={() => void loadPage()}>
+            <button className="icon-button" type="button" aria-label={t('actions.refresh')} onClick={() => void loadPage()}>
               <RefreshCcw size={16} />
             </button>
             <button className="primary-button" type="button" onClick={openCreate}>
               <Plus size={16} />
-              <span>New</span>
+              <span>{t('masterData.new')}</span>
             </button>
           </>
         }
@@ -171,7 +173,7 @@ export function LocationsPage({ apiOverride = api }: { apiOverride?: typeof api 
 
       {message ? <div className="banner success">{message}</div> : null}
       {error ? <div className="banner error">{error}</div> : null}
-      {loading ? <div className="empty-panel compact">Loading…</div> : null}
+      {loading ? <div className="empty-panel compact">{t('common.loading')}</div> : null}
 
       <MasterDataTable
         columns={columns}
@@ -188,37 +190,37 @@ export function LocationsPage({ apiOverride = api }: { apiOverride?: typeof api 
 
       <MasterDataDialog
         open={dialogOpen}
-        title={editing ? 'Edit Location' : 'New Location'}
+        title={editing ? t('masterData.editLocation') : t('masterData.newLocation')}
         onClose={() => setDialogOpen(false)}
         onSubmit={() => void submit()}
       >
         <div className="form-grid">
           <label>
-            <span>Code</span>
+            <span>{t('masterData.code')}</span>
             <input value={draft.code} onChange={(event) => setDraft((current) => ({ ...current, code: event.target.value }))} />
           </label>
           <label>
-            <span>Name</span>
+            <span>{t('masterData.name')}</span>
             <input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} />
           </label>
           <label>
-            <span>Type</span>
+            <span>{t('masterData.type')}</span>
             <select value={draft.locationType} onChange={(event) => setDraft((current) => ({ ...current, locationType: Number(event.target.value) }))}>
-              <option value={0}>Inbound Station</option>
-              <option value={1}>Rack</option>
-              <option value={2}>Outbound Station</option>
+              <option value={0}>{t('masterData.inboundStation')}</option>
+              <option value={1}>{t('masterData.rack')}</option>
+              <option value={2}>{t('masterData.outboundStation')}</option>
             </select>
           </label>
           <label>
-            <span>Status</span>
+            <span>{t('masterData.status')}</span>
             <select value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: Number(event.target.value) }))}>
-              <option value={0}>Available</option>
-              <option value={1}>Empty</option>
-              <option value={2}>Occupied</option>
+              <option value={0}>{t('masterData.available')}</option>
+              <option value={1}>{t('masterData.empty')}</option>
+              <option value={2}>{t('masterData.occupied')}</option>
             </select>
           </label>
           <label>
-            <span>Warehouse</span>
+            <span>{t('masterData.warehouse')}</span>
             <select value={draft.warehouseId} onChange={(event) => setDraft((current) => ({ ...current, warehouseId: Number(event.target.value) }))}>
               {warehouses.map((warehouse) => (
                 <option key={warehouse.id} value={warehouse.id}>{warehouse.code}</option>
@@ -226,12 +228,12 @@ export function LocationsPage({ apiOverride = api }: { apiOverride?: typeof api 
             </select>
           </label>
           <label>
-            <span>Current Pallet</span>
+            <span>{t('masterData.currentPallet')}</span>
             <select
               value={draft.currentPalletId ?? 0}
               onChange={(event) => setDraft((current) => ({ ...current, currentPalletId: Number(event.target.value) || null }))}
             >
-              <option value={0}>None</option>
+              <option value={0}>{t('masterData.none')}</option>
               {pallets.map((pallet) => (
                 <option key={pallet.id} value={pallet.id}>{pallet.code}</option>
               ))}
@@ -243,7 +245,7 @@ export function LocationsPage({ apiOverride = api }: { apiOverride?: typeof api 
               checked={draft.enabled}
               onChange={(event) => setDraft((current) => ({ ...current, enabled: event.target.checked }))}
             />
-            <span>Enabled</span>
+            <span>{t('masterData.enabled')}</span>
           </label>
         </div>
       </MasterDataDialog>
@@ -251,27 +253,27 @@ export function LocationsPage({ apiOverride = api }: { apiOverride?: typeof api 
   )
 }
 
-function toLocationTypeLabel(value: number) {
+function toLocationTypeLabel(value: number, t: ReturnType<typeof useI18n>['t']) {
   switch (value) {
     case 0:
-      return 'Inbound Station'
+      return t('masterData.inboundStation')
     case 1:
-      return 'Rack'
+      return t('masterData.rack')
     case 2:
-      return 'Outbound Station'
+      return t('masterData.outboundStation')
     default:
       return `Type ${value}`
   }
 }
 
-function toLocationStatusLabel(value: number) {
+function toLocationStatusLabel(value: number, t: ReturnType<typeof useI18n>['t']) {
   switch (value) {
     case 0:
-      return 'Available'
+      return t('masterData.available')
     case 1:
-      return 'Empty'
+      return t('masterData.empty')
     case 2:
-      return 'Occupied'
+      return t('masterData.occupied')
     default:
       return `Status ${value}`
   }

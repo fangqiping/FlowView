@@ -3,10 +3,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { MasterDataDialog } from '../components/MasterDataDialog'
 import { MasterDataTable, type MasterDataColumn } from '../components/MasterDataTable'
 import { PageHeader } from '../components/PageHeader'
+import { useI18n } from '../i18n/useI18n'
 import { api } from '../lib/api'
 import type { PalletModel, PortInputModel, PortModel, WarehouseModel } from '../types'
 
 export function PortsPage({ apiOverride = api }: { apiOverride?: typeof api }) {
+  const { t } = useI18n()
   const [items, setItems] = useState<PortModel[]>([])
   const [warehouses, setWarehouses] = useState<WarehouseModel[]>([])
   const [pallets, setPallets] = useState<PalletModel[]>([])
@@ -30,14 +32,14 @@ export function PortsPage({ apiOverride = api }: { apiOverride?: typeof api }) {
   const warehouseMap = useMemo(() => new Map(warehouses.map((item) => [item.id, item.name])), [warehouses])
   const palletMap = useMemo(() => new Map(pallets.map((item) => [item.id, item.code])), [pallets])
   const columns: MasterDataColumn<PortModel>[] = [
-    { key: 'code', label: 'Code' },
-    { key: 'name', label: 'Name' },
-    { key: 'portType', label: 'Port Type', render: (row) => (row.portType === 1 ? 'Inbound' : 'Outbound') },
-    { key: 'status', label: 'Status', render: (row) => toPortStatusLabel(row.status) },
-    { key: 'warehouseId', label: 'Warehouse', render: (row) => warehouseMap.get(row.warehouseId) ?? `#${row.warehouseId}` },
-    { key: 'currentPalletId', label: 'Current Pallet', render: (row) => row.currentPalletId ? (palletMap.get(row.currentPalletId) ?? `#${row.currentPalletId}`) : 'None' },
-    { key: 'enabled', label: 'Enabled', render: (row) => (row.enabled ? 'Yes' : 'No') },
-    { key: 'acquired', label: 'Acquired', render: (row) => (row.acquired ? 'Yes' : 'No') },
+    { key: 'code', label: t('masterData.code') },
+    { key: 'name', label: t('masterData.name') },
+    { key: 'portType', label: t('masterData.portType'), render: (row) => (row.portType === 1 ? t('masterData.inbound') : t('masterData.outbound')) },
+    { key: 'status', label: t('masterData.status'), render: (row) => toPortStatusLabel(row.status, t) },
+    { key: 'warehouseId', label: t('masterData.warehouse'), render: (row) => warehouseMap.get(row.warehouseId) ?? `#${row.warehouseId}` },
+    { key: 'currentPalletId', label: t('masterData.currentPallet'), render: (row) => row.currentPalletId ? (palletMap.get(row.currentPalletId) ?? `#${row.currentPalletId}`) : t('masterData.none') },
+    { key: 'enabled', label: t('masterData.enabled'), render: (row) => (row.enabled ? t('masterData.yes') : t('masterData.no')) },
+    { key: 'acquired', label: t('masterData.acquired'), render: (row) => (row.acquired ? t('masterData.yes') : t('masterData.no')) },
   ]
 
   useEffect(() => {
@@ -141,10 +143,10 @@ export function PortsPage({ apiOverride = api }: { apiOverride?: typeof api }) {
 
   return (
     <div className="page">
-      <PageHeader eyebrow="Master Data" title="Ports" actions={
+      <PageHeader eyebrow={t('masterData.eyebrow')} title={t('masterData.ports')} actions={
         <>
-          <button className="icon-button" type="button" aria-label="Refresh" onClick={() => void loadPage()}><RefreshCcw size={16} /></button>
-          <button className="primary-button" type="button" onClick={openCreate}><Plus size={16} /><span>New</span></button>
+          <button className="icon-button" type="button" aria-label={t('actions.refresh')} onClick={() => void loadPage()}><RefreshCcw size={16} /></button>
+          <button className="primary-button" type="button" onClick={openCreate}><Plus size={16} /><span>{t('masterData.new')}</span></button>
         </>
       } />
       {message ? <div className="banner success">{message}</div> : null}
@@ -161,41 +163,41 @@ export function PortsPage({ apiOverride = api }: { apiOverride?: typeof api }) {
         onDelete={(row) => void remove(row)}
         onToggleEnabled={(row) => void toggleEnabled(row)}
       />
-      <MasterDataDialog open={dialogOpen} title={editing ? 'Edit Port' : 'New Port'} onClose={() => setDialogOpen(false)} onSubmit={() => void submit()}>
+      <MasterDataDialog open={dialogOpen} title={editing ? t('masterData.editPort') : t('masterData.newPort')} onClose={() => setDialogOpen(false)} onSubmit={() => void submit()}>
         <div className="form-grid">
-          <label><span>Code</span><input value={draft.code} onChange={(event) => setDraft((current) => ({ ...current, code: event.target.value }))} /></label>
-          <label><span>Name</span><input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} /></label>
+          <label><span>{t('masterData.code')}</span><input value={draft.code} onChange={(event) => setDraft((current) => ({ ...current, code: event.target.value }))} /></label>
+          <label><span>{t('masterData.name')}</span><input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} /></label>
           <label>
-            <span>Port Type</span>
+            <span>{t('masterData.portType')}</span>
             <select value={draft.portType} onChange={(event) => setDraft((current) => ({ ...current, portType: Number(event.target.value) }))}>
-              <option value={1}>Inbound</option>
-              <option value={2}>Outbound</option>
+              <option value={1}>{t('masterData.inbound')}</option>
+              <option value={2}>{t('masterData.outbound')}</option>
             </select>
           </label>
           <label>
-            <span>Status</span>
+            <span>{t('masterData.status')}</span>
             <select value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: Number(event.target.value) }))}>
-              <option value={1}>Idle</option>
-              <option value={2}>Reserved</option>
-              <option value={3}>Occupied</option>
+              <option value={1}>{t('masterData.idle')}</option>
+              <option value={2}>{t('masterData.reserved')}</option>
+              <option value={3}>{t('masterData.occupied')}</option>
             </select>
           </label>
           <label>
-            <span>Warehouse</span>
+            <span>{t('masterData.warehouse')}</span>
             <select value={draft.warehouseId} onChange={(event) => setDraft((current) => ({ ...current, warehouseId: Number(event.target.value) }))}>
               {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.code}</option>)}
             </select>
           </label>
           <label>
-            <span>Current Pallet</span>
+            <span>{t('masterData.currentPallet')}</span>
             <select value={draft.currentPalletId ?? 0} onChange={(event) => setDraft((current) => ({ ...current, currentPalletId: Number(event.target.value) || null }))}>
-              <option value={0}>None</option>
+              <option value={0}>{t('masterData.none')}</option>
               {pallets.map((pallet) => <option key={pallet.id} value={pallet.id}>{pallet.code}</option>)}
             </select>
           </label>
           <label className="checkbox-field">
             <input type="checkbox" checked={draft.enabled} onChange={(event) => setDraft((current) => ({ ...current, enabled: event.target.checked }))} />
-            <span>Enabled</span>
+            <span>{t('masterData.enabled')}</span>
           </label>
         </div>
       </MasterDataDialog>
@@ -203,6 +205,6 @@ export function PortsPage({ apiOverride = api }: { apiOverride?: typeof api }) {
   )
 }
 
-function toPortStatusLabel(value: number) {
-  return value === 1 ? 'Idle' : value === 2 ? 'Reserved' : value === 3 ? 'Occupied' : `Status ${value}`
+function toPortStatusLabel(value: number, t: ReturnType<typeof useI18n>['t']) {
+  return value === 1 ? t('masterData.idle') : value === 2 ? t('masterData.reserved') : value === 3 ? t('masterData.occupied') : `Status ${value}`
 }

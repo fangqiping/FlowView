@@ -3,10 +3,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { MasterDataDialog } from '../components/MasterDataDialog'
 import { MasterDataTable, type MasterDataColumn } from '../components/MasterDataTable'
 import { PageHeader } from '../components/PageHeader'
+import { useI18n } from '../i18n/useI18n'
 import { api } from '../lib/api'
 import type { PalletInputModel, PalletModel, SkuModel } from '../types'
 
 export function PalletsPage({ apiOverride = api }: { apiOverride?: typeof api }) {
+  const { t } = useI18n()
   const [items, setItems] = useState<PalletModel[]>([])
   const [skus, setSkus] = useState<SkuModel[]>([])
   const [pageIndex, setPageIndex] = useState(1)
@@ -25,11 +27,11 @@ export function PalletsPage({ apiOverride = api }: { apiOverride?: typeof api })
 
   const skuMap = useMemo(() => new Map(skus.map((item) => [item.id, item.code])), [skus])
   const columns: MasterDataColumn<PalletModel>[] = [
-    { key: 'code', label: 'Code' },
-    { key: 'skuId', label: 'SKU', render: (row) => skuMap.get(row.skuId) ?? `#${row.skuId}` },
-    { key: 'quantity', label: 'Quantity' },
-    { key: 'enabled', label: 'Enabled', render: (row) => (row.enabled ? 'Yes' : 'No') },
-    { key: 'acquired', label: 'Acquired', render: (row) => (row.acquired ? 'Yes' : 'No') },
+    { key: 'code', label: t('masterData.code') },
+    { key: 'skuId', label: t('masterData.sku'), render: (row) => skuMap.get(row.skuId) ?? `#${row.skuId}` },
+    { key: 'quantity', label: t('masterData.quantity') },
+    { key: 'enabled', label: t('masterData.enabled'), render: (row) => (row.enabled ? t('masterData.yes') : t('masterData.no')) },
+    { key: 'acquired', label: t('masterData.acquired'), render: (row) => (row.acquired ? t('masterData.yes') : t('masterData.no')) },
   ]
 
   useEffect(() => {
@@ -113,10 +115,10 @@ export function PalletsPage({ apiOverride = api }: { apiOverride?: typeof api })
 
   return (
     <div className="page">
-      <PageHeader eyebrow="Master Data" title="Pallets" actions={
+      <PageHeader eyebrow={t('masterData.eyebrow')} title={t('masterData.pallets')} actions={
         <>
-          <button className="icon-button" type="button" aria-label="Refresh" onClick={() => void loadPage()}><RefreshCcw size={16} /></button>
-          <button className="primary-button" type="button" onClick={openCreate}><Plus size={16} /><span>New</span></button>
+          <button className="icon-button" type="button" aria-label={t('actions.refresh')} onClick={() => void loadPage()}><RefreshCcw size={16} /></button>
+          <button className="primary-button" type="button" onClick={openCreate}><Plus size={16} /><span>{t('masterData.new')}</span></button>
         </>
       } />
       {message ? <div className="banner success">{message}</div> : null}
@@ -133,19 +135,19 @@ export function PalletsPage({ apiOverride = api }: { apiOverride?: typeof api })
         onDelete={(row) => void remove(row)}
         onToggleEnabled={(row) => void toggleEnabled(row)}
       />
-      <MasterDataDialog open={dialogOpen} title={editing ? 'Edit Pallet' : 'New Pallet'} onClose={() => setDialogOpen(false)} onSubmit={() => void submit()}>
+      <MasterDataDialog open={dialogOpen} title={editing ? t('masterData.editPallet') : t('masterData.newPallet')} onClose={() => setDialogOpen(false)} onSubmit={() => void submit()}>
         <div className="form-grid">
-          <label><span>Code</span><input value={draft.code} onChange={(event) => setDraft((current) => ({ ...current, code: event.target.value }))} /></label>
+          <label><span>{t('masterData.code')}</span><input value={draft.code} onChange={(event) => setDraft((current) => ({ ...current, code: event.target.value }))} /></label>
           <label>
-            <span>SKU</span>
+            <span>{t('masterData.sku')}</span>
             <select value={draft.skuId} onChange={(event) => setDraft((current) => ({ ...current, skuId: Number(event.target.value) }))}>
               {skus.map((sku) => <option key={sku.id} value={sku.id}>{sku.code}</option>)}
             </select>
           </label>
-          <label><span>Quantity</span><input type="number" value={draft.quantity} onChange={(event) => setDraft((current) => ({ ...current, quantity: Number(event.target.value) }))} /></label>
+          <label><span>{t('masterData.quantity')}</span><input type="number" value={draft.quantity} onChange={(event) => setDraft((current) => ({ ...current, quantity: Number(event.target.value) }))} /></label>
           <label className="checkbox-field">
             <input type="checkbox" checked={draft.enabled} onChange={(event) => setDraft((current) => ({ ...current, enabled: event.target.checked }))} />
-            <span>Enabled</span>
+            <span>{t('masterData.enabled')}</span>
           </label>
         </div>
       </MasterDataDialog>

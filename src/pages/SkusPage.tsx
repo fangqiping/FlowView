@@ -3,10 +3,12 @@ import { useEffect, useState } from 'react'
 import { MasterDataDialog } from '../components/MasterDataDialog'
 import { MasterDataTable, type MasterDataColumn } from '../components/MasterDataTable'
 import { PageHeader } from '../components/PageHeader'
+import { useI18n } from '../i18n/useI18n'
 import { api } from '../lib/api'
 import type { SkuInputModel, SkuModel } from '../types'
 
 export function SkusPage({ apiOverride = api }: { apiOverride?: typeof api }) {
+  const { t } = useI18n()
   const [items, setItems] = useState<SkuModel[]>([])
   const [pageIndex, setPageIndex] = useState(1)
   const [pageSize, setPageSize] = useState(20)
@@ -22,9 +24,9 @@ export function SkusPage({ apiOverride = api }: { apiOverride?: typeof api }) {
   })
 
   const columns: MasterDataColumn<SkuModel>[] = [
-    { key: 'code', label: 'Code' },
-    { key: 'name', label: 'Name' },
-    { key: 'spec', label: 'Spec' },
+    { key: 'code', label: t('masterData.code') },
+    { key: 'name', label: t('masterData.name') },
+    { key: 'spec', label: t('masterData.spec') },
   ]
 
   useEffect(() => {
@@ -89,10 +91,10 @@ export function SkusPage({ apiOverride = api }: { apiOverride?: typeof api }) {
 
   return (
     <div className="page">
-      <PageHeader eyebrow="Master Data" title="Skus" actions={
+      <PageHeader eyebrow={t('masterData.eyebrow')} title={t('masterData.skus')} actions={
         <>
-          <button className="icon-button" type="button" aria-label="Refresh" onClick={() => void loadPage()}><RefreshCcw size={16} /></button>
-          <button className="primary-button" type="button" onClick={openCreate}><Plus size={16} /><span>New</span></button>
+          <button className="icon-button" type="button" aria-label={t('actions.refresh')} onClick={() => void loadPage()}><RefreshCcw size={16} /></button>
+          <button className="primary-button" type="button" onClick={openCreate}><Plus size={16} /><span>{t('masterData.new')}</span></button>
         </>
       } />
       {message ? <div className="banner success">{message}</div> : null}
@@ -108,11 +110,11 @@ export function SkusPage({ apiOverride = api }: { apiOverride?: typeof api }) {
         onEdit={openEdit}
         onDelete={(row) => void remove(row)}
       />
-      <MasterDataDialog open={dialogOpen} title={editing ? 'Edit Sku' : 'New Sku'} onClose={() => setDialogOpen(false)} onSubmit={() => void submit()}>
+      <MasterDataDialog open={dialogOpen} title={editing ? t('masterData.editSku') : t('masterData.newSku')} onClose={() => setDialogOpen(false)} onSubmit={() => void submit()}>
         <div className="form-grid">
-          <label><span>Code</span><input value={draft.code} onChange={(event) => setDraft((current) => ({ ...current, code: event.target.value }))} /></label>
-          <label><span>Name</span><input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} /></label>
-          <label><span>Spec</span><input value={draft.spec} onChange={(event) => setDraft((current) => ({ ...current, spec: event.target.value }))} /></label>
+          <label><span>{t('masterData.code')}</span><input value={draft.code} onChange={(event) => setDraft((current) => ({ ...current, code: event.target.value }))} /></label>
+          <label><span>{t('masterData.name')}</span><input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} /></label>
+          <label><span>{t('masterData.spec')}</span><input value={draft.spec} onChange={(event) => setDraft((current) => ({ ...current, spec: event.target.value }))} /></label>
         </div>
       </MasterDataDialog>
     </div>
