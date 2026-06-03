@@ -144,4 +144,60 @@ describe('FlowDefinitionsPage', () => {
     expect(screen.getByText('流程定义')).toBeTruthy()
     expect(screen.getByText('暂无流程定义。')).toBeTruthy()
   })
+
+  it('links published versions with simulation to the gantt page', async () => {
+    vi.mocked(api.getFlowDefinitions).mockResolvedValue([
+      {
+        code: 'parent-flow',
+        name: 'Parent Flow',
+        status: 'Active',
+        activeVersionNumber: 3,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ])
+    vi.mocked(api.getFlowDraft).mockResolvedValue({
+      code: 'parent-flow',
+      name: 'Parent Flow',
+      revision: 3,
+      draftDocumentJson: '{"nodes":[]}',
+      updatedAt: new Date().toISOString(),
+    })
+    vi.mocked(api.getFlowVersions).mockResolvedValue([
+      {
+        id: 1,
+        code: 'parent-flow',
+        versionNumber: 3,
+        runtimeFlowId: 'db:parent-flow:v3',
+        sourceDraftRevision: 3,
+        sourceGraphJson: '{}',
+        compiledGraphJson: '{}',
+        publishedAt: new Date().toISOString(),
+        status: 1,
+        isActive: true,
+        simulation: {
+          code: 'parent-flow',
+          totalDurationMilliseconds: 1000,
+          nodes: [],
+        },
+      },
+    ])
+    vi.mocked(api.getFlowCatalog).mockResolvedValue({
+      operations: [],
+      subFlowTemplates: [],
+      variableTypes: [],
+      expressionOperators: [],
+    })
+
+    render(
+      <I18nProvider>
+        <MemoryRouter>
+          <FlowDefinitionsPage />
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+
+    const link = await screen.findByRole('link', { name: /view gantt/i })
+    expect(link.getAttribute('href')).toBe('/flows/parent-flow/simulation?version=3')
+  })
 })

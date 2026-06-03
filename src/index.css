@@ -925,6 +925,25 @@ textarea:focus {
   min-width: 0;
 }
 
+.simulation-source-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid rgba(149, 161, 184, 0.12);
+  padding: 2px 0 12px;
+}
+
+.simulation-source-bar span {
+  color: #90a0bb;
+  font-size: 0.82rem;
+}
+
+.simulation-source-bar strong {
+  color: #edf2fb;
+  font-size: 0.9rem;
+}
+
 .simulation-gantt {
   display: grid;
   gap: 10px;

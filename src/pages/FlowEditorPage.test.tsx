@@ -313,6 +313,7 @@ describe('FlowEditorPage subflows', () => {
     expect(screen.getByText('Total 5.0s')).toBeTruthy()
     expect(within(gantt).getByText('Pick')).toBeTruthy()
     expect(within(gantt).getByText('Pack')).toBeTruthy()
+    expect(screen.getByRole('link', { name: /view simulation gantt/i }).getAttribute('href')).toBe('/flows/parent-flow/simulation')
   })
 
   it('shows built-in console groups from local fallback templates', async () => {

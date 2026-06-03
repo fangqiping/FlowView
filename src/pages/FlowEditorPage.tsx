@@ -2,7 +2,7 @@ import { Background, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesSt
 import '@xyflow/react/dist/style.css'
 import { AlertTriangle, CheckCircle2, ExternalLink, Link2, Network, Plus, RefreshCcw, Save, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { FlowSimulationGantt } from '../components/FlowSimulationGantt'
 import { useI18n } from '../i18n/useI18n'
@@ -27,6 +27,7 @@ import {
   type OperationNodeTemplate,
 } from '../lib/flowDraft'
 import { findSubFlowCandidate } from '../lib/subflowBindings'
+import { clearFlowSimulation, saveFlowSimulation } from '../lib/flowSimulationCache'
 import { emptyOutgoingRoute, getOutgoingRoute, replaceOutgoingRoute, type OutgoingRouteMode, type OutgoingRouteState } from '../lib/routeEditor'
 import type {
   DraftBinding,
@@ -254,6 +255,7 @@ function FlowEditorWorkspace() {
       setDraftModel(saved)
       setMessage(`Saved revision ${saved.revision}.`)
       setSimulation(null)
+      clearFlowSimulation(code)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to save draft.')
     } finally {
@@ -271,6 +273,9 @@ function FlowEditorWorkspace() {
       setError(null)
       const result = await api.preflightFlow(code, draftModel.revision)
       setSimulation(result.simulation ?? null)
+      if (result.simulation) {
+        saveFlowSimulation(code, result.simulation)
+      }
       setMessage(`Preflight passed on revision ${result.sourceDraftRevision}.`)
     } catch (caught) {
       const model = extractDesignError(caught)
@@ -291,6 +296,9 @@ function FlowEditorWorkspace() {
       const result = await api.publishFlow(code, { expectedRevision: draftModel.revision })
       setMessage(`Published ${result.code} v${result.versionNumber}.`)
       setSimulation(result.simulation ?? null)
+      if (result.simulation) {
+        saveFlowSimulation(code, result.simulation)
+      }
       await loadEditor()
     } catch (caught) {
       const model = extractDesignError(caught)
@@ -479,6 +487,12 @@ function FlowEditorWorkspace() {
               <Network size={16} />
               <span>{busy === 'dependency-preflight' ? t('flow.checking') : t('flow.publishWithSubflows')}</span>
             </button>
+            {simulation ? (
+              <Link className="secondary-button link-button" to={`/flows/${code}/simulation`}>
+                <ExternalLink size={16} />
+                <span>{t('flow.viewSimulationGantt')}</span>
+              </Link>
+            ) : null}
           </div>
         }
       />

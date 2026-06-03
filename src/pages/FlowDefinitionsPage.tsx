@@ -287,6 +287,11 @@ export function FlowDefinitionsPage() {
                   </div>
                   <div className="version-actions">
                     {version.isActive ? <span className="status-pill success">{t('flow.active')}</span> : null}
+                    {version.simulation ? (
+                      <Link className="inline-button link-button" to={`/flows/${version.code}/simulation?version=${version.versionNumber}`}>
+                        {t('flow.viewGantt')}
+                      </Link>
+                    ) : null}
                     {!version.isActive ? (
                       <button className="inline-button" type="button" onClick={() => void activateVersion(version.versionNumber)}>
                         {busy === `activate-${version.versionNumber}` ? t('flow.activating') : t('flow.activate')}

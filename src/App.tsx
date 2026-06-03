@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
 import { FlowDefinitionsPage } from './pages/FlowDefinitionsPage'
 import { FlowEditorPage } from './pages/FlowEditorPage'
+import { FlowSimulationPage } from './pages/FlowSimulationPage'
 import { LocationsPage } from './pages/LocationsPage'
 import { OrdersPage } from './pages/OrdersPage'
 import { PalletsPage } from './pages/PalletsPage'
@@ -19,6 +20,7 @@ function App() {
         <Route path="/tasks/:id" element={<TaskExecutionPage />} />
         <Route path="/flows" element={<FlowDefinitionsPage />} />
         <Route path="/flows/:code/editor" element={<FlowEditorPage />} />
+        <Route path="/flows/:code/simulation" element={<FlowSimulationPage />} />
         <Route path="/master-data/locations" element={<LocationsPage />} />
         <Route path="/master-data/ports" element={<PortsPage />} />
         <Route path="/master-data/pallets" element={<PalletsPage />} />
