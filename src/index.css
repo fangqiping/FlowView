@@ -676,6 +676,88 @@ textarea:focus {
   gap: 10px;
 }
 
+.node-library-group {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.node-library-list {
+  max-height: min(58vh, 620px);
+  min-height: 220px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 10px;
+  scrollbar-gutter: stable;
+}
+
+.node-library-list,
+.variable-editor-list,
+.inspector-panel {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(144, 160, 187, 0.26) transparent;
+}
+
+.node-library-list::-webkit-scrollbar,
+.variable-editor-list::-webkit-scrollbar,
+.inspector-panel::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.node-library-list::-webkit-scrollbar-track,
+.variable-editor-list::-webkit-scrollbar-track,
+.inspector-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.node-library-list::-webkit-scrollbar-thumb,
+.variable-editor-list::-webkit-scrollbar-thumb,
+.inspector-panel::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(144, 160, 187, 0.22);
+}
+
+.node-library-list:hover::-webkit-scrollbar-thumb,
+.variable-editor-list:hover::-webkit-scrollbar-thumb,
+.inspector-panel:hover::-webkit-scrollbar-thumb {
+  background: rgba(144, 160, 187, 0.42);
+}
+
+.node-library-group + .node-library-group {
+  padding-top: 10px;
+  border-top: 1px solid rgba(149, 161, 184, 0.1);
+}
+
+.node-library-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+  color: #cdd7e8;
+  font-size: 0.82rem;
+}
+
+.node-library-group-header::-webkit-details-marker {
+  display: none;
+}
+
+.node-library-group-header::before {
+  content: "▸";
+  color: #90a0bb;
+}
+
+.node-library-group[open] .node-library-group-header::before {
+  content: "▾";
+}
+
+.node-library-group-header span {
+  margin-left: auto;
+  color: #90a0bb;
+}
+
 .line-list li,
 .version-row,
 .list-item-button {
@@ -687,6 +769,7 @@ textarea:focus {
   border-radius: 8px;
   background: #111927;
   padding: 12px 14px;
+  min-width: 0;
 }
 
 .execution-list li.selected-list-row {
@@ -696,7 +779,12 @@ textarea:focus {
 
 .list-item-button {
   width: 100%;
+  min-width: 0;
   text-align: left;
+}
+
+.list-item-button > div {
+  min-width: 0;
 }
 
 .list-item-button.selected {
@@ -709,6 +797,8 @@ textarea:focus {
   margin: 4px 0 0;
   color: #90a0bb;
   font-size: 0.82rem;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .version-actions {
@@ -721,16 +811,47 @@ textarea:focus {
   display: grid;
   grid-template-columns: 340px minmax(0, 1fr) 360px;
   gap: 18px;
-  min-height: calc(100vh - 180px);
+  height: calc(100vh - 260px);
+  min-height: 520px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .editor-sidebar,
 .inspector-panel {
-  overflow: auto;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.editor-sidebar {
+  scrollbar-width: none;
+}
+
+.editor-sidebar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.inspector-panel {
+  overflow-y: auto;
 }
 
 .canvas-panel {
-  min-height: 720px;
+  min-height: 0;
+  min-width: 0;
+}
+
+.variable-editor-list {
+  max-height: min(28vh, 320px);
+  min-height: 160px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 10px;
+  scrollbar-gutter: stable;
 }
 
 .execution-layout {

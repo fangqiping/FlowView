@@ -13,6 +13,7 @@ import {
   buildDraftDocument,
   buildFlowGraph,
   connectEdges,
+  createOperationNodeTemplate,
   createEmptyDraft,
   type FlowEdge,
   type FlowNode,
@@ -22,6 +23,7 @@ import {
   ROOT_NODE_ID,
   toPascalCase,
   type FlowNodeData,
+  type OperationNodeTemplate,
 } from '../lib/flowDraft'
 import { findSubFlowCandidate } from '../lib/subflowBindings'
 import { emptyOutgoingRoute, getOutgoingRoute, replaceOutgoingRoute, type OutgoingRouteMode, type OutgoingRouteState } from '../lib/routeEditor'
@@ -60,6 +62,10 @@ function FlowEditorWorkspace() {
   const [busy, setBusy] = useState<string | null>(null)
   const [dependencyPlan, setDependencyPlan] = useState<FlowDependencyPublishPlanModel | null>(null)
   const [meta, setMeta] = useState({ name: code, description: '' })
+  const operationGroups = useMemo(
+    () => groupOperationTemplates(buildOperationTemplates(catalog)),
+    [catalog],
+  )
   const subFlowCandidates = useMemo(
     () => definitions
       .filter((definition) => definition.code !== code)
@@ -466,48 +472,65 @@ function FlowEditorWorkspace() {
       {message ? <div className="banner success">{message}</div> : null}
       {error ? <div className="banner error">{error}</div> : null}
 
+      <section className="panel definition-panel">
+        <div className="panel-header">
+          <h3>{t('flow.definition')}</h3>
+          <span>{draftModel?.revision ?? 0}</span>
+        </div>
+        <div className="form-grid compact">
+          <label>
+            <span>{t('flow.name')}</span>
+            <input value={meta.name} onChange={(event) => setMeta((current) => ({ ...current, name: event.target.value }))} />
+          </label>
+          <label>
+            <span>{t('flow.description')}</span>
+            <textarea rows={2} value={meta.description} onChange={(event) => setMeta((current) => ({ ...current, description: event.target.value }))} />
+          </label>
+        </div>
+      </section>
+
       <div className="flow-editor-layout">
         <section className="panel editor-sidebar">
-          <div className="panel-header">
-            <h3>{t('flow.definition')}</h3>
-            <span>{draftModel?.revision ?? 0}</span>
-          </div>
-
-          <div className="form-grid compact">
-            <label>
-              <span>{t('flow.name')}</span>
-              <input value={meta.name} onChange={(event) => setMeta((current) => ({ ...current, name: event.target.value }))} />
-            </label>
-            <label className="wide">
-              <span>{t('flow.description')}</span>
-              <textarea rows={3} value={meta.description} onChange={(event) => setMeta((current) => ({ ...current, description: event.target.value }))} />
-            </label>
-          </div>
-
           <div className="library-section">
             <div className="panel-header">
               <h4>{t('flow.nodeLibrary')}</h4>
               <span>{t('flow.localCatalog')}</span>
             </div>
-            <div className="stack-list">
-              {LOCAL_OPERATION_LIBRARY.map((template) => (
-                <button key={template.key} type="button" className="list-item-button" onClick={() => setNodes((current) => addOperationNode(current, template))}>
-                  <div>
-                    <strong>{template.name}</strong>
-                    <p>{template.consoleId}</p>
-                  </div>
-                  <Plus size={16} />
-                </button>
+            <div className="stack-list node-library-list">
+              {operationGroups.map((group) => (
+                <details className="node-library-group" key={group.title} open>
+                  <summary className="node-library-group-header">
+                    <strong>{group.title}</strong>
+                    <span>{group.items.length}</span>
+                  </summary>
+                  {group.items.map((template) => (
+                    <button key={template.key} type="button" className="list-item-button" onClick={() => setNodes((current) => addOperationNode(current, template))}>
+                      <div>
+                        <strong>{template.name}</strong>
+                        <p>{template.operationTaskType}</p>
+                      </div>
+                      <Plus size={16} />
+                    </button>
+                  ))}
+                </details>
               ))}
-              {subFlowCandidates.map((template) => (
-                <button key={template.code} type="button" className="list-item-button" onClick={() => setNodes((current) => addSubFlowNode(current, template))}>
-                  <div>
-                    <strong>{template.name}</strong>
-                    <p>{template.activeVersionNumber ? `${template.code} v${template.activeVersionNumber}` : template.code}</p>
-                  </div>
-                  <Plus size={16} />
-                </button>
-              ))}
+              {subFlowCandidates.length > 0 ? (
+                <details className="node-library-group" open>
+                  <summary className="node-library-group-header">
+                    <strong>{t('flow.subflows')}</strong>
+                    <span>{subFlowCandidates.length}</span>
+                  </summary>
+                  {subFlowCandidates.map((template) => (
+                    <button key={template.code} type="button" className="list-item-button" onClick={() => setNodes((current) => addSubFlowNode(current, template))}>
+                      <div>
+                        <strong>{template.name}</strong>
+                        <p>{template.activeVersionNumber ? `${template.code} v${template.activeVersionNumber}` : template.code}</p>
+                      </div>
+                      <Plus size={16} />
+                    </button>
+                  ))}
+                </details>
+              ) : null}
             </div>
           </div>
 
@@ -518,7 +541,7 @@ function FlowEditorWorkspace() {
                 <Plus size={16} />
               </button>
             </div>
-            <div className="variable-list">
+            <div className="variable-list variable-editor-list">
               {variables.map((variable, index) => (
                 <div key={`${variable.id}-${index}`} className="variable-row">
                   <input
@@ -609,13 +632,6 @@ function FlowEditorWorkspace() {
                     }
                   />
                 </label>
-                <label>
-                  <span>{t('flow.description')}</span>
-                  <input
-                    value={selectedNode.data.description}
-                    onChange={(event) => updateSelectedNode({ description: event.target.value })}
-                  />
-                </label>
                 {selectedNode.data.kind === 'operation' ? (
                   <>
                     <label>
@@ -632,15 +648,31 @@ function FlowEditorWorkspace() {
                         onChange={(event) => updateSelectedNode({ operationTaskType: event.target.value })}
                       />
                     </label>
+                    <label className="wide">
+                      <span>{t('flow.description')}</span>
+                      <input
+                        value={selectedNode.data.description}
+                        onChange={(event) => updateSelectedNode({ description: event.target.value })}
+                      />
+                    </label>
                   </>
                 ) : (
-                  <label className="wide">
-                    <span>{t('flow.childFlowCode')}</span>
-                    <input
-                      value={selectedNode.data.flowId}
-                      onChange={(event) => updateSelectedNode({ flowId: event.target.value })}
-                    />
-                  </label>
+                  <>
+                    <label>
+                      <span>{t('flow.childFlowCode')}</span>
+                      <input
+                        value={selectedNode.data.flowId}
+                        onChange={(event) => updateSelectedNode({ flowId: event.target.value })}
+                      />
+                    </label>
+                    <label className="wide">
+                      <span>{t('flow.description')}</span>
+                      <input
+                        value={selectedNode.data.description}
+                        onChange={(event) => updateSelectedNode({ description: event.target.value })}
+                      />
+                    </label>
+                  </>
                 )}
               </div>
 
@@ -940,4 +972,35 @@ function FlowEditorWorkspace() {
       ) : null}
     </div>
   )
+}
+
+function buildOperationTemplates(catalog: FlowCatalogModel | null): OperationNodeTemplate[] {
+  const byKey = new Map<string, OperationNodeTemplate>()
+
+  for (const operation of catalog?.operations ?? []) {
+    byKey.set(operation.key, createOperationNodeTemplate(operation))
+  }
+
+  for (const template of LOCAL_OPERATION_LIBRARY) {
+    if (!byKey.has(template.key)) {
+      byKey.set(template.key, template)
+    }
+  }
+
+  return [...byKey.values()]
+}
+
+function groupOperationTemplates(templates: OperationNodeTemplate[]) {
+  const groups = templates.reduce<Map<string, OperationNodeTemplate[]>>((acc, template) => {
+    const title = template.consoleId || template.group || 'Catalog'
+    acc.set(title, [...(acc.get(title) ?? []), template])
+    return acc
+  }, new Map())
+
+  return [...groups.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([title, items]) => ({
+      title,
+      items: items.sort((left, right) => left.name.localeCompare(right.name)),
+    }))
 }

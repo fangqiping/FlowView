@@ -151,6 +151,85 @@ describe('FlowEditorPage subflows', () => {
     expect(saveInput.draftDocumentJson).not.toContain('db:child-flow:v1')
   })
 
+  it('loads backend catalog operations into grouped node library', async () => {
+    vi.mocked(api.getFlowDefinitions).mockResolvedValue([])
+    vi.mocked(api.getFlowCatalog).mockResolvedValue({
+      operations: [
+        {
+          key: 'backend-move',
+          name: 'Backend Move',
+          description: 'Move with backend template metadata.',
+          category: 'FunctionConsole',
+          operationTaskTypeName: 'Backend.Demo.BackendMoveOperationTask',
+          inputs: [{ name: 'OrderCode', typeName: 'System.String', required: true }],
+          outputs: [{ name: 'Status', typeName: 'System.String', required: false }],
+          signatureHash: 'backend-move-v1',
+        },
+      ],
+      variableTypes: [],
+      expressionOperators: [],
+      subFlowTemplates: [],
+    })
+    vi.mocked(api.getFlowDraft).mockResolvedValue({
+      code: 'parent-flow',
+      name: 'Parent Flow',
+      revision: 1,
+      updatedAt: '',
+      draftDocumentJson: JSON.stringify({ id: 'ParentFlow', variables: [], nodes: [], routes: [] }),
+    })
+    vi.mocked(api.saveFlowDraft).mockResolvedValue({
+      code: 'parent-flow',
+      name: 'Parent Flow',
+      revision: 2,
+      updatedAt: '',
+      draftDocumentJson: '{}',
+    })
+
+    renderEditor()
+
+    expect(await screen.findByText('FunctionConsole')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /backend move/i }))
+    fireEvent.click(screen.getByRole('button', { name: /save draft/i }))
+
+    await waitFor(() => expect(api.saveFlowDraft).toHaveBeenCalled())
+    const saveInput = vi.mocked(api.saveFlowDraft).mock.calls[0][1]
+    const savedDocument = JSON.parse(saveInput.draftDocumentJson)
+    expect(savedDocument.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        nodeType: 'Operation',
+        consoleId: 'FunctionConsole',
+        operationTaskType: 'Backend.Demo.BackendMoveOperationTask',
+        inputs: [{ source: 'OrderCode', destination: 'OrderCode' }],
+        outputs: [{ source: 'Status', destination: 'Status' }],
+      }),
+    ]))
+  })
+
+  it('shows built-in console groups from local fallback templates', async () => {
+    vi.mocked(api.getFlowDefinitions).mockResolvedValue([])
+    vi.mocked(api.getFlowCatalog).mockResolvedValue({
+      operations: [],
+      variableTypes: [],
+      expressionOperators: [],
+      subFlowTemplates: [],
+    })
+    vi.mocked(api.getFlowDraft).mockResolvedValue({
+      code: 'parent-flow',
+      name: 'Parent Flow',
+      revision: 1,
+      updatedAt: '',
+      draftDocumentJson: JSON.stringify({ id: 'ParentFlow', variables: [], nodes: [], routes: [] }),
+    })
+
+    renderEditor()
+
+    expect(await screen.findByText('Function')).toBeTruthy()
+    expect(screen.getByText('Manual')).toBeTruthy()
+    expect(screen.getByText('Timer')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /manual confirm/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /wait until time/i })).toBeTruthy()
+  })
+
   it('preflights and publishes with subflows', async () => {
     vi.mocked(api.getFlowDefinitions).mockResolvedValue([])
     vi.mocked(api.getFlowCatalog).mockResolvedValue({

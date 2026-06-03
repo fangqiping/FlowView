@@ -1,6 +1,6 @@
 import type { Connection, Edge, Node, Viewport } from '@xyflow/react'
 import { addEdge } from '@xyflow/react'
-import type { DraftDocument, DraftNode, DraftRoute, DraftVariable, SubFlowVariableSignatureModel } from '../types'
+import type { DraftDocument, DraftNode, DraftRoute, DraftVariable, OperationModel, SubFlowVariableSignatureModel } from '../types'
 
 export interface FlowNodeData extends Record<string, unknown> {
   label: string
@@ -37,6 +37,17 @@ export interface SubFlowNodeTemplate {
   outputs: SubFlowVariableSignatureModel[]
 }
 
+export interface OperationNodeTemplate {
+  key: string
+  name: string
+  description?: string | null
+  consoleId: string
+  operationTaskType: string
+  inputs: Array<{ source: string; destination: string }>
+  outputs: Array<{ source: string; destination: string }>
+  group?: string | null
+}
+
 export const ROOT_NODE_ID = 'Root'
 export const EDITOR_VARIABLE_TYPES = ['string', 'bool', 'int', 'long', 'float'] as const
 
@@ -46,7 +57,52 @@ const ROUTE_KIND_TO_DRAFT_KIND: Record<RouteKind, DraftRoute['kind']> = {
   switch: 2,
 }
 
-export const LOCAL_OPERATION_LIBRARY = [
+export const LOCAL_OPERATION_LIBRARY: OperationNodeTemplate[] = [
+  {
+    key: 'function-noop',
+    name: 'No operation',
+    consoleId: 'Function',
+    operationTaskType: 'FlowEngine.Execution.Consoles.NoopOperationTask',
+    description: 'Completes immediately without doing work.',
+    inputs: [],
+    outputs: [],
+  },
+  {
+    key: 'manual-confirm',
+    name: 'Manual confirm',
+    consoleId: 'Manual',
+    operationTaskType: 'FlowEngine.Execution.Consoles.ManualConsole+ManualOperationTask',
+    description: 'Waits for a manual confirmation.',
+    inputs: [],
+    outputs: [],
+  },
+  {
+    key: 'manual-condition',
+    name: 'Manual condition',
+    consoleId: 'Manual',
+    operationTaskType: 'FlowEngine.Execution.Consoles.ManualConsole+ConditionalManualOperationTask',
+    description: 'Waits for a manual boolean result.',
+    inputs: [{ source: 'Result', destination: 'Result' }],
+    outputs: [],
+  },
+  {
+    key: 'manual-switch',
+    name: 'Manual switch',
+    consoleId: 'Manual',
+    operationTaskType: 'FlowEngine.Execution.Consoles.ManualConsole+SwitchManualOperationTask',
+    description: 'Waits for a manual integer branch result.',
+    inputs: [{ source: 'Result', destination: 'Result' }],
+    outputs: [],
+  },
+  {
+    key: 'timer-due-time',
+    name: 'Wait until time',
+    consoleId: 'Timer',
+    operationTaskType: 'FlowEngine.Execution.Consoles.TimerConsole+TimerOperationTask',
+    description: 'Waits until the configured due time.',
+    inputs: [{ source: 'DueTime', destination: 'DueTime' }],
+    outputs: [],
+  },
   {
     key: 'conveyor-transfer',
     name: 'Conveyor Transfer',
@@ -86,7 +142,7 @@ export const LOCAL_OPERATION_LIBRARY = [
     ],
     outputs: [{ source: 'CompletionMessage', destination: 'Status' }],
   },
-] as const
+]
 
 export function createEmptyDraft(code: string, name = code): DraftDocument {
   return {
@@ -256,7 +312,7 @@ export function buildDraftDocument(
 
 export function addOperationNode(
   nodes: FlowNode[],
-  template: (typeof LOCAL_OPERATION_LIBRARY)[number],
+  template: OperationNodeTemplate,
 ): FlowNode[] {
   const count = nodes.filter((node) => node.id !== ROOT_NODE_ID).length + 1
   return [
@@ -268,7 +324,7 @@ export function addOperationNode(
       data: {
         label: template.name,
         kind: 'operation',
-        description: template.description,
+        description: template.description ?? '',
         consoleId: template.consoleId,
         operationTaskType: template.operationTaskType,
         flowId: '',
@@ -279,6 +335,19 @@ export function addOperationNode(
       },
     },
   ]
+}
+
+export function createOperationNodeTemplate(operation: OperationModel): OperationNodeTemplate {
+  return {
+    key: operation.key,
+    name: operation.name,
+    description: operation.description,
+    consoleId: operation.category ?? '',
+    operationTaskType: operation.operationTaskTypeName,
+    inputs: operation.inputs.map((input) => ({ source: input.name, destination: input.name })),
+    outputs: operation.outputs.map((output) => ({ source: output.name, destination: output.name })),
+    group: operation.category ?? 'Catalog',
+  }
 }
 
 export function addSubFlowNode(
