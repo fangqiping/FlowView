@@ -5,6 +5,7 @@ import { PageHeader } from '../components/PageHeader'
 import { useI18n } from '../i18n/useI18n'
 import { api, ApiError, extractDesignError } from '../lib/api'
 import { buildDraftGraphSummary } from '../lib/flowCatalogSummary'
+import { readFlowSimulation } from '../lib/flowSimulationCache'
 import type { FlowDefinitionSummaryModel, FlowDraftModel, FlowVersionModel } from '../types'
 
 export function FlowDefinitionsPage() {
@@ -287,7 +288,7 @@ export function FlowDefinitionsPage() {
                   </div>
                   <div className="version-actions">
                     {version.isActive ? <span className="status-pill success">{t('flow.active')}</span> : null}
-                    {version.simulation ? (
+                    {readFlowSimulation(version) ? (
                       <Link className="inline-button link-button" to={`/flows/${version.code}/simulation?version=${version.versionNumber}`}>
                         {t('flow.viewGantt')}
                       </Link>

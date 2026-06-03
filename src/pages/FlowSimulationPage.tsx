@@ -5,7 +5,7 @@ import { FlowSimulationGantt } from '../components/FlowSimulationGantt'
 import { PageHeader } from '../components/PageHeader'
 import { useI18n } from '../i18n/useI18n'
 import { api } from '../lib/api'
-import { loadFlowSimulation } from '../lib/flowSimulationCache'
+import { loadFlowSimulation, readFlowSimulation } from '../lib/flowSimulationCache'
 import type { FlowSimulationModel } from '../types'
 
 export function FlowSimulationPage() {
@@ -34,7 +34,7 @@ export function FlowSimulationPage() {
       if (Number.isFinite(versionNumber) && versionNumber > 0) {
         const versions = await api.getFlowVersions(code)
         const version = versions.find((item) => item.versionNumber === versionNumber)
-        setSimulation(version?.simulation ?? null)
+        setSimulation(readFlowSimulation(version))
         setSourceLabel(t('flow.simulationSourceVersion', { version: versionNumber }))
         return
       }

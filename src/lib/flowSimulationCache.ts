@@ -28,6 +28,15 @@ export function clearFlowSimulation(code: string) {
   sessionStorage.removeItem(storageKey(code))
 }
 
+export function readFlowSimulation(value: unknown): FlowSimulationModel | null {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const response = value as { simulation?: FlowSimulationModel | null, Simulation?: FlowSimulationModel | null }
+  return response.simulation ?? response.Simulation ?? null
+}
+
 function storageKey(code: string) {
   return `${STORAGE_PREFIX}${code}`
 }

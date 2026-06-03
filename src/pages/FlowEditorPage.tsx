@@ -27,7 +27,7 @@ import {
   type OperationNodeTemplate,
 } from '../lib/flowDraft'
 import { findSubFlowCandidate } from '../lib/subflowBindings'
-import { clearFlowSimulation, saveFlowSimulation } from '../lib/flowSimulationCache'
+import { clearFlowSimulation, readFlowSimulation, saveFlowSimulation } from '../lib/flowSimulationCache'
 import { emptyOutgoingRoute, getOutgoingRoute, replaceOutgoingRoute, type OutgoingRouteMode, type OutgoingRouteState } from '../lib/routeEditor'
 import type {
   DraftBinding,
@@ -272,9 +272,10 @@ function FlowEditorWorkspace() {
       setBusy('preflight')
       setError(null)
       const result = await api.preflightFlow(code, draftModel.revision)
-      setSimulation(result.simulation ?? null)
-      if (result.simulation) {
-        saveFlowSimulation(code, result.simulation)
+      const nextSimulation = readFlowSimulation(result)
+      setSimulation(nextSimulation)
+      if (nextSimulation) {
+        saveFlowSimulation(code, nextSimulation)
       }
       setMessage(`Preflight passed on revision ${result.sourceDraftRevision}.`)
     } catch (caught) {
@@ -295,9 +296,10 @@ function FlowEditorWorkspace() {
       setError(null)
       const result = await api.publishFlow(code, { expectedRevision: draftModel.revision })
       setMessage(`Published ${result.code} v${result.versionNumber}.`)
-      setSimulation(result.simulation ?? null)
-      if (result.simulation) {
-        saveFlowSimulation(code, result.simulation)
+      const nextSimulation = readFlowSimulation(result)
+      setSimulation(nextSimulation)
+      if (nextSimulation) {
+        saveFlowSimulation(code, nextSimulation)
       }
       await loadEditor()
     } catch (caught) {
