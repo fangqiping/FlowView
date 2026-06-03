@@ -288,6 +288,19 @@ export interface PagedResponse<T> {
   hasNextPage?: boolean
 }
 
+export type NotificationLevel = 0 | 1 | 2 | 3
+
+export interface NotificationModel {
+  id: number
+  level: NotificationLevel
+  source: string
+  title: string
+  detail?: string | null
+  confirmed: boolean
+  createdTime?: string | null
+  confirmedTime?: string | null
+}
+
 export interface LocationInputModel {
   code: string
   name: string
