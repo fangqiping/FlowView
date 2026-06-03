@@ -65,6 +65,7 @@ function FlowEditorWorkspace() {
   const [busy, setBusy] = useState<string | null>(null)
   const [dependencyPlan, setDependencyPlan] = useState<FlowDependencyPublishPlanModel | null>(null)
   const [simulation, setSimulation] = useState<FlowSimulationModel | null>(null)
+  const [simulationViewAvailable, setSimulationViewAvailable] = useState(false)
   const [meta, setMeta] = useState({ name: code, description: '' })
   const operationGroups = useMemo(
     () => groupOperationTemplates(buildOperationTemplates(catalog)),
@@ -142,6 +143,7 @@ function FlowEditorWorkspace() {
       setEdges(graph.edges)
       setSelectedNodeId(graph.nodes.find((node) => node.id !== ROOT_NODE_ID)?.id ?? null)
       setSimulation(null)
+      setSimulationViewAvailable(false)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to load flow editor.')
     } finally {
@@ -255,6 +257,7 @@ function FlowEditorWorkspace() {
       setDraftModel(saved)
       setMessage(`Saved revision ${saved.revision}.`)
       setSimulation(null)
+      setSimulationViewAvailable(false)
       clearFlowSimulation(code)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to save draft.')
@@ -274,6 +277,7 @@ function FlowEditorWorkspace() {
       const result = await api.preflightFlow(code, draftModel.revision)
       const nextSimulation = readFlowSimulation(result)
       setSimulation(nextSimulation)
+      setSimulationViewAvailable(true)
       if (nextSimulation) {
         saveFlowSimulation(code, nextSimulation)
       }
@@ -489,7 +493,7 @@ function FlowEditorWorkspace() {
               <Network size={16} />
               <span>{busy === 'dependency-preflight' ? t('flow.checking') : t('flow.publishWithSubflows')}</span>
             </button>
-            {simulation ? (
+            {simulationViewAvailable ? (
               <Link className="secondary-button link-button" to={`/flows/${code}/simulation`}>
                 <ExternalLink size={16} />
                 <span>{t('flow.viewSimulationGantt')}</span>

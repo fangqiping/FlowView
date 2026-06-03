@@ -365,6 +365,40 @@ describe('FlowEditorPage subflows', () => {
     expect(screen.getByText('Total 1.0s')).toBeTruthy()
   })
 
+  it('shows the simulation gantt link after a successful preflight without simulation data', async () => {
+    vi.mocked(api.getFlowDefinitions).mockResolvedValue([])
+    vi.mocked(api.getFlowCatalog).mockResolvedValue({
+      operations: [],
+      subFlowTemplates: [],
+      variableTypes: [],
+      expressionOperators: [],
+    })
+    vi.mocked(api.getFlowDraft).mockResolvedValue({
+      code: 'parent-flow',
+      name: 'Parent Flow',
+      revision: 1,
+      updatedAt: '',
+      draftDocumentJson: JSON.stringify({
+        id: 'ParentFlow',
+        variables: [],
+        nodes: [baseDraftNode('Pick')],
+        routes: [],
+      }),
+    })
+    vi.mocked(api.preflightFlow).mockResolvedValue({
+      code: 'parent-flow',
+      sourceDraftRevision: 1,
+      compiledGraphJson: '{}',
+    } as unknown as Awaited<ReturnType<typeof api.preflightFlow>>)
+
+    renderEditor()
+
+    fireEvent.click(await screen.findByRole('button', { name: /^preflight$/i }))
+
+    const link = await screen.findByRole('link', { name: /view simulation gantt/i })
+    expect(link.getAttribute('href')).toBe('/flows/parent-flow/simulation')
+  })
+
   it('shows built-in console groups from local fallback templates', async () => {
     vi.mocked(api.getFlowDefinitions).mockResolvedValue([])
     vi.mocked(api.getFlowCatalog).mockResolvedValue({
