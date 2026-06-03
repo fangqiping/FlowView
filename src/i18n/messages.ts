@@ -40,6 +40,7 @@ export type MessageKey =
   | 'flow.definitionCount'
   | 'flow.emptyDefinitions'
   | 'flow.catalogSummary'
+  | 'flow.draftSummary'
   | 'flow.operations'
   | 'flow.subflows'
   | 'flow.variableTypes'

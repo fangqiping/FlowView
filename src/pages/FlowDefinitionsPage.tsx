@@ -4,8 +4,8 @@ import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { useI18n } from '../i18n/useI18n'
 import { api, ApiError, extractDesignError } from '../lib/api'
-import { buildCatalogSummary } from '../lib/flowCatalogSummary'
-import type { FlowCatalogModel, FlowDefinitionSummaryModel, FlowDraftModel, FlowVersionModel } from '../types'
+import { buildDraftGraphSummary } from '../lib/flowCatalogSummary'
+import type { FlowDefinitionSummaryModel, FlowDraftModel, FlowVersionModel } from '../types'
 
 export function FlowDefinitionsPage() {
   const { t } = useI18n()
@@ -13,16 +13,15 @@ export function FlowDefinitionsPage() {
   const [selectedCode, setSelectedCode] = useState('')
   const [draft, setDraft] = useState<FlowDraftModel | null>(null)
   const [versions, setVersions] = useState<FlowVersionModel[]>([])
-  const [catalog, setCatalog] = useState<FlowCatalogModel | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [createInput, setCreateInput] = useState({ code: '', name: '', description: '' })
   const [busy, setBusy] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const catalogSummary = catalog ? buildCatalogSummary(catalog, selectedCode) : null
+  const draftSummary = draft ? buildDraftGraphSummary(draft) : null
 
   useEffect(() => {
-    void Promise.all([loadDefinitions(), loadCatalog()])
+    void loadDefinitions()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -34,14 +33,6 @@ export function FlowDefinitionsPage() {
       setVersions([])
     }
   }, [selectedCode])
-
-  async function loadCatalog() {
-    try {
-      setCatalog(await api.getFlowCatalog())
-    } catch {
-      // Keep page usable even if catalog is unavailable.
-    }
-  }
 
   async function loadDefinitions(preferredCode = selectedCode) {
     try {
@@ -222,13 +213,13 @@ export function FlowDefinitionsPage() {
             {definitions.length === 0 ? <div className="empty-panel">{t('flow.emptyDefinitions')}</div> : null}
           </div>
 
-          {catalogSummary ? (
+          {draftSummary ? (
             <div className="catalog-summary">
-              <h4>{t('flow.catalogSummary')}</h4>
+              <h4>{t('flow.draftSummary')}</h4>
               <div className="meta-grid compact">
-                <div><span className="meta-label">{t('flow.operations')}</span><strong>{catalogSummary.operations}</strong></div>
-                <div><span className="meta-label">{t('flow.subflows')}</span><strong>{catalogSummary.subflows}</strong></div>
-                <div><span className="meta-label">{t('flow.variableTypes')}</span><strong>{catalogSummary.variableTypes}</strong></div>
+                <div><span className="meta-label">{t('flow.operations')}</span><strong>{draftSummary.operations}</strong></div>
+                <div><span className="meta-label">{t('flow.subflows')}</span><strong>{draftSummary.subflows}</strong></div>
+                <div><span className="meta-label">{t('flow.variables')}</span><strong>{draftSummary.variables}</strong></div>
               </div>
             </div>
           ) : null}

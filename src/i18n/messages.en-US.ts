@@ -42,6 +42,7 @@ export const enUSMessages: Messages = {
   'flow.definitionCount': '{count} definitions',
   'flow.emptyDefinitions': 'No flow definitions yet.',
   'flow.catalogSummary': 'Catalog summary',
+  'flow.draftSummary': 'Draft summary',
   'flow.operations': 'Operations',
   'flow.subflows': 'Subflows',
   'flow.variableTypes': 'Variable types',

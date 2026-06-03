@@ -42,6 +42,7 @@ export const zhHansCNMessages: Messages = {
   'flow.definitionCount': '{count} 个定义',
   'flow.emptyDefinitions': '暂无流程定义。',
   'flow.catalogSummary': '目录摘要',
+  'flow.draftSummary': '草稿摘要',
   'flow.operations': '操作',
   'flow.subflows': '子流程',
   'flow.variableTypes': '变量类型',

@@ -1,14 +1,16 @@
-import { EDITOR_VARIABLE_TYPES, LOCAL_OPERATION_LIBRARY } from './flowDraft'
-import type { FlowCatalogModel } from '../types'
+import type { FlowCatalogModel, FlowDraftModel } from '../types'
+import { parseDraftDocument } from './flowDraft'
 
 export function getVisibleSubFlowTemplates(catalog: FlowCatalogModel, currentCode?: string | null) {
   return catalog.subFlowTemplates.filter((template) => template.code !== currentCode)
 }
 
-export function buildCatalogSummary(catalog: FlowCatalogModel, currentCode?: string | null) {
+export function buildDraftGraphSummary(draft: FlowDraftModel) {
+  const document = parseDraftDocument(draft.draftDocumentJson, draft.code)
+
   return {
-    operations: LOCAL_OPERATION_LIBRARY.length,
-    subflows: getVisibleSubFlowTemplates(catalog, currentCode).length,
-    variableTypes: EDITOR_VARIABLE_TYPES.length,
+    operations: document.nodes.filter((node) => node.nodeType === 'Operation').length,
+    subflows: document.nodes.filter((node) => node.nodeType === 'SubFlow').length,
+    variables: document.variables.length,
   }
 }
