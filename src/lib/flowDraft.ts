@@ -11,6 +11,7 @@ export interface FlowNodeData extends Record<string, unknown> {
   flowId: string
   inputs: Array<{ source: string; destination: string }>
   outputs: Array<{ source: string; destination: string }>
+  estimatedDurationMilliseconds?: number | null
   shouldThrowOnFailed: boolean
   shouldThrowOnCanceled: boolean
 }
@@ -45,6 +46,7 @@ export interface OperationNodeTemplate {
   operationTaskType: string
   inputs: Array<{ source: string; destination: string }>
   outputs: Array<{ source: string; destination: string }>
+  estimatedDurationMilliseconds?: number | null
   group?: string | null
 }
 
@@ -201,6 +203,7 @@ export function buildFlowGraph(document: DraftDocument): { nodes: FlowNode[]; ed
       flowId: '',
       inputs: [],
       outputs: [],
+      estimatedDurationMilliseconds: null,
       shouldThrowOnFailed: false,
       shouldThrowOnCanceled: false,
     },
@@ -222,6 +225,7 @@ export function buildFlowGraph(document: DraftDocument): { nodes: FlowNode[]; ed
       flowId: node.flowId ?? '',
       inputs: node.inputs ?? [],
       outputs: node.outputs ?? [],
+      estimatedDurationMilliseconds: node.estimatedDurationMilliseconds ?? null,
       shouldThrowOnFailed: node.shouldThrowOnFailed ?? true,
       shouldThrowOnCanceled: node.shouldThrowOnCanceled ?? true,
     },
@@ -251,6 +255,7 @@ export function buildDraftDocument(
       id: node.id,
       nodeType: node.data.kind === 'subflow' ? 'SubFlow' : 'Operation',
       description: node.data.description,
+      estimatedDurationMilliseconds: node.data.estimatedDurationMilliseconds ?? undefined,
       shouldThrowOnFailed: node.data.shouldThrowOnFailed,
       shouldThrowOnCanceled: node.data.shouldThrowOnCanceled,
       inputs: node.data.inputs,
@@ -330,6 +335,7 @@ export function addOperationNode(
         flowId: '',
         inputs: [...template.inputs],
         outputs: [...template.outputs],
+        estimatedDurationMilliseconds: template.estimatedDurationMilliseconds ?? null,
         shouldThrowOnFailed: true,
         shouldThrowOnCanceled: true,
       },
@@ -346,6 +352,7 @@ export function createOperationNodeTemplate(operation: OperationModel): Operatio
     operationTaskType: operation.operationTaskTypeName,
     inputs: operation.inputs.map((input) => ({ source: input.name, destination: input.name })),
     outputs: operation.outputs.map((output) => ({ source: output.name, destination: output.name })),
+    estimatedDurationMilliseconds: operation.estimatedDurationMilliseconds ?? null,
     group: operation.category ?? 'Catalog',
   }
 }
@@ -370,6 +377,7 @@ export function addSubFlowNode(
         flowId: template.code,
         inputs: template.inputs.map((item) => ({ source: item.id, destination: item.id })),
         outputs: template.outputs.map((item) => ({ source: item.id, destination: item.id })),
+        estimatedDurationMilliseconds: null,
         shouldThrowOnFailed: true,
         shouldThrowOnCanceled: true,
       },

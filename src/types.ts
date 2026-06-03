@@ -168,6 +168,7 @@ export interface FlowVersionModel {
   sourceDraftRevision: number
   sourceGraphJson: string
   compiledGraphJson: string
+  simulation?: FlowSimulationModel
   publishedAt: string
   publishedBy?: string | null
   status: number
@@ -178,6 +179,26 @@ export interface FlowPreflightModel {
   code: string
   sourceDraftRevision: number
   compiledGraphJson: string
+  simulation: FlowSimulationModel
+}
+
+export interface FlowSimulationNodeModel {
+  nodeId: string
+  nodeType: string
+  description?: string | null
+  operationTaskType?: string | null
+  flowId?: string | null
+  estimatedDurationMilliseconds: number
+  earliestStartMilliseconds: number
+  earliestEndMilliseconds: number
+  dependencyNodeIds: string[]
+  isCriticalPath: boolean
+}
+
+export interface FlowSimulationModel {
+  code: string
+  totalDurationMilliseconds: number
+  nodes: FlowSimulationNodeModel[]
 }
 
 export interface FlowDependencyPublishEntryModel {
@@ -236,6 +257,7 @@ export interface OperationModel {
   name: string
   description?: string | null
   category?: string | null
+  estimatedDurationMilliseconds?: number | null
   operationTaskTypeName: string
   inputs: OperationParameterModel[]
   outputs: OperationParameterModel[]
@@ -411,6 +433,7 @@ export interface DraftNode {
   id: string
   nodeType: 'Operation' | 'SubFlow'
   description?: string
+  estimatedDurationMilliseconds?: number | null
   shouldThrowOnFailed: boolean
   shouldThrowOnCanceled: boolean
   inputs: DraftBinding[]

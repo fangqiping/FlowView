@@ -921,6 +921,92 @@ textarea:focus {
   align-items: center;
 }
 
+.simulation-panel {
+  min-width: 0;
+}
+
+.simulation-gantt {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  overflow-x: auto;
+}
+
+.simulation-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.28fr) minmax(260px, 1fr) minmax(110px, 0.2fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 620px;
+}
+
+.simulation-row-label,
+.simulation-row-meta {
+  min-width: 0;
+}
+
+.simulation-row-label strong {
+  display: block;
+  overflow: hidden;
+  color: #edf2fb;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.simulation-row-label span,
+.simulation-row-meta span {
+  display: block;
+  margin-top: 3px;
+  color: #90a0bb;
+  font-size: 0.78rem;
+}
+
+.simulation-track {
+  position: relative;
+  height: 28px;
+  border: 1px solid rgba(149, 161, 184, 0.12);
+  border-radius: 8px;
+  background: #0f1724;
+  overflow: hidden;
+}
+
+.simulation-bar {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  display: flex;
+  align-items: center;
+  min-width: 4px;
+  border-radius: 6px;
+  background: #2d6ef7;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.simulation-bar.critical {
+  background: #20c98b;
+}
+
+.simulation-bar span {
+  padding: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.simulation-row-meta {
+  text-align: right;
+}
+
+.simulation-row-meta strong {
+  display: block;
+  color: #8ff3c7;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .spin {
   animation: spin 0.9s linear infinite;
 }

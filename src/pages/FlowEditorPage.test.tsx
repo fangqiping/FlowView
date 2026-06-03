@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -203,6 +203,116 @@ describe('FlowEditorPage subflows', () => {
         outputs: [{ source: 'Status', destination: 'Status' }],
       }),
     ]))
+  })
+
+  it('edits a selected node estimated duration and saves it in the draft', async () => {
+    vi.mocked(api.getFlowDefinitions).mockResolvedValue([])
+    vi.mocked(api.getFlowCatalog).mockResolvedValue({
+      operations: [],
+      subFlowTemplates: [],
+      variableTypes: [],
+      expressionOperators: [],
+    })
+    vi.mocked(api.getFlowDraft).mockResolvedValue({
+      code: 'parent-flow',
+      name: 'Parent Flow',
+      revision: 1,
+      updatedAt: '',
+      draftDocumentJson: JSON.stringify({
+        id: 'ParentFlow',
+        variables: [],
+        nodes: [{ ...baseDraftNode('Pick'), estimatedDurationMilliseconds: 1000 }],
+        routes: [],
+      }),
+    })
+    vi.mocked(api.saveFlowDraft).mockResolvedValue({
+      code: 'parent-flow',
+      name: 'Parent Flow',
+      revision: 2,
+      updatedAt: '',
+      draftDocumentJson: '{}',
+    })
+
+    renderEditor()
+
+    const durationInput = await screen.findByLabelText(/estimated duration/i)
+    fireEvent.change(durationInput, { target: { value: '2500' } })
+    fireEvent.click(screen.getByRole('button', { name: /save draft/i }))
+
+    await waitFor(() => expect(api.saveFlowDraft).toHaveBeenCalled())
+    const saveInput = vi.mocked(api.saveFlowDraft).mock.calls[0][1]
+    const savedDocument = JSON.parse(saveInput.draftDocumentJson)
+    expect(savedDocument.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'Pick',
+        estimatedDurationMilliseconds: 2500,
+      }),
+    ]))
+  })
+
+  it('renders the preflight simulation as a gantt chart', async () => {
+    vi.mocked(api.getFlowDefinitions).mockResolvedValue([])
+    vi.mocked(api.getFlowCatalog).mockResolvedValue({
+      operations: [],
+      subFlowTemplates: [],
+      variableTypes: [],
+      expressionOperators: [],
+    })
+    vi.mocked(api.getFlowDraft).mockResolvedValue({
+      code: 'parent-flow',
+      name: 'Parent Flow',
+      revision: 1,
+      updatedAt: '',
+      draftDocumentJson: JSON.stringify({
+        id: 'ParentFlow',
+        variables: [],
+        nodes: [baseDraftNode('Pick'), baseDraftNode('Pack')],
+        routes: [{ type: 0, source: 'Pick', targets: ['Pack'], kind: 0 }],
+      }),
+    })
+    vi.mocked(api.preflightFlow).mockResolvedValue({
+      code: 'parent-flow',
+      sourceDraftRevision: 1,
+      compiledGraphJson: '{}',
+      simulation: {
+        code: 'parent-flow',
+        totalDurationMilliseconds: 5000,
+        nodes: [
+          {
+            nodeId: 'Pick',
+            nodeType: 'Operation',
+            description: 'Pick item',
+            operationTaskType: 'Backend.Demo.FunctionOperationTask',
+            estimatedDurationMilliseconds: 2000,
+            earliestStartMilliseconds: 0,
+            earliestEndMilliseconds: 2000,
+            dependencyNodeIds: [],
+            isCriticalPath: true,
+          },
+          {
+            nodeId: 'Pack',
+            nodeType: 'Operation',
+            description: 'Pack item',
+            operationTaskType: 'Backend.Demo.FunctionOperationTask',
+            estimatedDurationMilliseconds: 3000,
+            earliestStartMilliseconds: 2000,
+            earliestEndMilliseconds: 5000,
+            dependencyNodeIds: ['Pick'],
+            isCriticalPath: true,
+          },
+        ],
+      },
+    })
+
+    renderEditor()
+
+    fireEvent.click(await screen.findByRole('button', { name: /^preflight$/i }))
+
+    const gantt = await screen.findByLabelText('Simulation Gantt')
+    expect(within(gantt).getByText('Simulation Gantt')).toBeTruthy()
+    expect(screen.getByText('Total 5.0s')).toBeTruthy()
+    expect(within(gantt).getByText('Pick')).toBeTruthy()
+    expect(within(gantt).getByText('Pack')).toBeTruthy()
   })
 
   it('shows built-in console groups from local fallback templates', async () => {

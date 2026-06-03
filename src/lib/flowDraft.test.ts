@@ -141,6 +141,24 @@ describe('flowDraft branch routes', () => {
       }),
     ]))
   })
+
+  it('preserves node estimated durations when reading and saving drafts', () => {
+    const document: DraftDocument = {
+      id: 'TimedFlow',
+      variables,
+      nodes: [
+        { ...baseNode('Pick'), estimatedDurationMilliseconds: 1500 },
+      ],
+      routes: [],
+    }
+
+    const graph = buildFlowGraph(document)
+    const pick = graph.nodes.find((node) => node.id === 'Pick')
+    expect(pick?.data.estimatedDurationMilliseconds).toBe(1500)
+
+    const saved = buildDraftDocument('timed-flow', 'Timed Flow', variables, graph.nodes, graph.edges)
+    expect(saved.nodes[0]?.estimatedDurationMilliseconds).toBe(1500)
+  })
 })
 
 function baseNode(id: string) {

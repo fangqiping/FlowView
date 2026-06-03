@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, ExternalLink, Link2, Network, Plus, Refres
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
+import { FlowSimulationGantt } from '../components/FlowSimulationGantt'
 import { useI18n } from '../i18n/useI18n'
 import { api, extractDesignError } from '../lib/api'
 import { appendBinding, removeBinding, updateBinding } from '../lib/bindingEditor'
@@ -34,6 +35,7 @@ import type {
   FlowDefinitionSummaryModel,
   FlowDependencyPublishPlanModel,
   FlowDraftModel,
+  FlowSimulationModel,
 } from '../types'
 
 export function FlowEditorPage() {
@@ -61,6 +63,7 @@ function FlowEditorWorkspace() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [dependencyPlan, setDependencyPlan] = useState<FlowDependencyPublishPlanModel | null>(null)
+  const [simulation, setSimulation] = useState<FlowSimulationModel | null>(null)
   const [meta, setMeta] = useState({ name: code, description: '' })
   const operationGroups = useMemo(
     () => groupOperationTemplates(buildOperationTemplates(catalog)),
@@ -137,6 +140,7 @@ function FlowEditorWorkspace() {
       setNodes(graph.nodes)
       setEdges(graph.edges)
       setSelectedNodeId(graph.nodes.find((node) => node.id !== ROOT_NODE_ID)?.id ?? null)
+      setSimulation(null)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to load flow editor.')
     } finally {
@@ -249,6 +253,7 @@ function FlowEditorWorkspace() {
       })
       setDraftModel(saved)
       setMessage(`Saved revision ${saved.revision}.`)
+      setSimulation(null)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to save draft.')
     } finally {
@@ -265,6 +270,7 @@ function FlowEditorWorkspace() {
       setBusy('preflight')
       setError(null)
       const result = await api.preflightFlow(code, draftModel.revision)
+      setSimulation(result.simulation ?? null)
       setMessage(`Preflight passed on revision ${result.sourceDraftRevision}.`)
     } catch (caught) {
       const model = extractDesignError(caught)
@@ -284,6 +290,7 @@ function FlowEditorWorkspace() {
       setError(null)
       const result = await api.publishFlow(code, { expectedRevision: draftModel.revision })
       setMessage(`Published ${result.code} v${result.versionNumber}.`)
+      setSimulation(result.simulation ?? null)
       await loadEditor()
     } catch (caught) {
       const model = extractDesignError(caught)
@@ -437,6 +444,13 @@ function FlowEditorWorkspace() {
       candidate += 1
     }
     return String(candidate)
+  }
+
+  function updateSelectedDuration(value: string) {
+    const trimmed = value.trim()
+    updateSelectedNode({
+      estimatedDurationMilliseconds: trimmed === '' ? null : Math.max(0, Math.trunc(Number(trimmed) || 0)),
+    })
   }
 
   return (
@@ -655,6 +669,16 @@ function FlowEditorWorkspace() {
                         onChange={(event) => updateSelectedNode({ description: event.target.value })}
                       />
                     </label>
+                    <label>
+                      <span>{t('flow.estimatedDuration')}</span>
+                      <input
+                        min={0}
+                        step={1000}
+                        type="number"
+                        value={selectedNode.data.estimatedDurationMilliseconds ?? ''}
+                        onChange={(event) => updateSelectedDuration(event.target.value)}
+                      />
+                    </label>
                   </>
                 ) : (
                   <>
@@ -670,6 +694,16 @@ function FlowEditorWorkspace() {
                       <input
                         value={selectedNode.data.description}
                         onChange={(event) => updateSelectedNode({ description: event.target.value })}
+                      />
+                    </label>
+                    <label>
+                      <span>{t('flow.estimatedDuration')}</span>
+                      <input
+                        min={0}
+                        step={1000}
+                        type="number"
+                        value={selectedNode.data.estimatedDurationMilliseconds ?? ''}
+                        onChange={(event) => updateSelectedDuration(event.target.value)}
                       />
                     </label>
                   </>
@@ -932,6 +966,8 @@ function FlowEditorWorkspace() {
           </div>
         </section>
       </div>
+
+      {simulation ? <FlowSimulationGantt simulation={simulation} /> : null}
 
       {dependencyPlan ? (
         <div className="modal-scrim" role="presentation">
