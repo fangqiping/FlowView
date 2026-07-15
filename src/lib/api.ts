@@ -25,6 +25,9 @@ import type {
   PagedResponse,
   PortModel,
   PortInputModel,
+  SchedulePlanComparisonModel,
+  SchedulePlanModel,
+  ScheduleSolveAttemptModel,
   SkuModel,
   SkuInputModel,
   WarehouseModel,
@@ -298,6 +301,30 @@ export const api = {
 
   async getFlowTask(id: number) {
     return request<FlowTaskDetail>(`/api/FlowTask/${id}`)
+  },
+
+  async getCurrentSchedulePlan() {
+    return request<SchedulePlanModel>('/api/SchedulePlans/current')
+  },
+
+  async getSchedulePlan(id: number) {
+    return request<SchedulePlanModel>(`/api/SchedulePlans/${id}`)
+  },
+
+  async getSchedulePlanHistory() {
+    return request<SchedulePlanModel[]>('/api/SchedulePlans/history')
+  },
+
+  async compareSchedulePlans(planId: number, previousPlanId: number) {
+    return request<SchedulePlanComparisonModel>(
+      `/api/SchedulePlans/${planId}/comparison?previousPlanId=${previousPlanId}`,
+    )
+  },
+
+  async requestScheduleReplan() {
+    return request<ScheduleSolveAttemptModel>('/api/SchedulePlans/replan', {
+      method: 'POST',
+    })
   },
 
   async flowTaskAction(id: number, action: 'cancel' | 'skip' | 'restart') {
