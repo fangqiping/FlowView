@@ -1,4 +1,5 @@
 import type { SchedulePlanItemModel } from '../types'
+import { useI18n } from '../i18n/useI18n'
 import {
   getTimelineGeometry,
   groupResourceOccupancies,
@@ -37,12 +38,13 @@ export function ResourceScheduleLanes({
   selectedItemId,
   onSelect,
 }: ResourceScheduleLanesProps) {
+  const { t } = useI18n()
   const lanes = groupResourceOccupancies(items)
 
   if (lanes.length === 0) {
     return (
       <div className="resource-schedule-lanes resource-schedule-empty" role="status">
-        No resource occupancies
+        {t('scheduling.noResourceOccupancies')}
       </div>
     )
   }
@@ -79,7 +81,12 @@ export function ResourceScheduleLanes({
                 statusClass !== intervalClass ? statusClass : null,
                 isDelayedItem(item, now) && statusClass !== 'delayed' ? 'delayed' : null,
               ].filter((className) => className !== null).join(' ')
-              const identity = `${item.displayLabel}; FlowTask ${item.flowTaskId}; node ${item.nodeId}; resource ${lane.resourceType} / ${lane.resourceId}`
+              const identity = t('scheduling.resourceItemIdentity', {
+                label: item.displayLabel,
+                flowTaskId: item.flowTaskId,
+                node: item.nodeId,
+                resource: `${lane.resourceType} / ${lane.resourceId}`,
+              })
 
               return (
                 <button

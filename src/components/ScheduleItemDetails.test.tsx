@@ -1,11 +1,18 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render as rtlRender, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
+import { I18nProvider } from '../i18n/I18nProvider'
 import type { SchedulePlanItemModel } from '../types'
 import { ScheduleItemDetails } from './ScheduleItemDetails'
 
 const NOW = '2026-07-15T10:30:00.000Z'
 
 afterEach(cleanup)
+
+function render(ui: ReactElement) {
+  localStorage.setItem('flowview.language', 'en-US')
+  return rtlRender(ui, { wrapper: I18nProvider })
+}
 
 function makeItem(overrides: Partial<SchedulePlanItemModel> = {}): SchedulePlanItemModel {
   return {

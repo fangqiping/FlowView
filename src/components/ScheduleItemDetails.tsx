@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import type { SchedulePlanItemModel } from '../types'
 import { formatScheduleDeviation } from '../lib/scheduling'
+import type { MessageKey } from '../i18n/messages'
+import { useI18n } from '../i18n/useI18n'
 
 export interface ScheduleItemDetailsProps {
   item: SchedulePlanItemModel | null
@@ -9,18 +11,18 @@ export interface ScheduleItemDetailsProps {
 
 type DisplayContext = Record<string, unknown>
 
-const STATUS_LABELS = [
-  'Planned',
-  'Waiting',
-  'Running',
-  'Completed',
-  'Delayed',
-  'Blocked',
-  'Canceled',
+const STATUS_KEYS: MessageKey[] = [
+  'scheduling.statusPlanned',
+  'scheduling.statusWaiting',
+  'scheduling.statusRunning',
+  'scheduling.statusCompleted',
+  'scheduling.statusDelayed',
+  'scheduling.statusBlocked',
+  'scheduling.statusCanceled',
 ] as const
 
-function getStatusLabel(status: number): string {
-  return STATUS_LABELS[status] ?? `Unknown (${status})`
+function getStatusKey(status: number): MessageKey | null {
+  return STATUS_KEYS[status] ?? null
 }
 
 function parseDisplayContext(value: string | null): DisplayContext {
@@ -76,14 +78,16 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
 }
 
 export function ScheduleItemDetails({ item, now }: ScheduleItemDetailsProps) {
+  const { t } = useI18n()
+
   if (item === null) {
     return (
       <section
-        aria-label="Schedule item details"
+        aria-label={t('scheduling.itemDetails')}
         className="schedule-item-details schedule-item-details-empty"
         role="status"
       >
-        Select a schedule item
+        {t('scheduling.selectItem')}
       </section>
     )
   }
@@ -94,36 +98,41 @@ export function ScheduleItemDetails({ item, now }: ScheduleItemDetailsProps) {
     ? orderCode
     : displayValue(readContextValue(context, 'orderId'))
   const locationFields = [
-    ['sourceLocation', 'Source location'],
-    ['requestedSourceLocation', 'Requested source location'],
-    ['targetLocation', 'Target location'],
-    ['requestedTargetLocation', 'Requested target location'],
+    ['sourceLocation', 'scheduling.sourceLocation'],
+    ['requestedSourceLocation', 'scheduling.requestedSourceLocation'],
+    ['targetLocation', 'scheduling.targetLocation'],
+    ['requestedTargetLocation', 'scheduling.requestedTargetLocation'],
   ] as const
+  const statusKey = getStatusKey(item.status)
 
   return (
-    <section aria-label="Schedule item details" className="schedule-item-details">
+    <section aria-label={t('scheduling.itemDetails')} className="schedule-item-details">
       <dl className="schedule-item-details-list">
-        <Detail label="FlowTask">{item.flowTaskId}</Detail>
-        <Detail label="OperationTask">{displayValue(item.operationTaskId)}</Detail>
-        <Detail label="Order">{order}</Detail>
-        <Detail label="Pallet">{displayValue(readContextValue(context, 'pallet'))}</Detail>
-        <Detail label="SKU">{displayValue(readContextValue(context, 'sku'))}</Detail>
-        <Detail label="Node">{displayValue(item.nodeId)}</Detail>
-        <Detail label="Occurrence">{item.occurrence}</Detail>
-        <Detail label="Resource">
+        <Detail label={t('scheduling.flowTask')}>{item.flowTaskId}</Detail>
+        <Detail label={t('scheduling.operationTask')}>{displayValue(item.operationTaskId)}</Detail>
+        <Detail label={t('scheduling.order')}>{order}</Detail>
+        <Detail label={t('scheduling.pallet')}>{displayValue(readContextValue(context, 'pallet'))}</Detail>
+        <Detail label={t('scheduling.sku')}>{displayValue(readContextValue(context, 'sku'))}</Detail>
+        <Detail label={t('scheduling.node')}>{displayValue(item.nodeId)}</Detail>
+        <Detail label={t('scheduling.occurrence')}>{item.occurrence}</Detail>
+        <Detail label={t('scheduling.resource')}>
           {displayValue(item.resourceType)} / {displayValue(item.resourceId)}
         </Detail>
-        <Detail label="Status">{getStatusLabel(item.status)}</Detail>
-        <Detail label="Planned">
+        <Detail label={t('scheduling.status')}>
+          {statusKey === null
+            ? t('scheduling.unknownValue', { value: item.status })
+            : t(statusKey)}
+        </Detail>
+        <Detail label={t('scheduling.planned')}>
           <time dateTime={item.plannedStart}>{item.plannedStart}</time>
           {' – '}
           <time dateTime={item.plannedEnd}>{item.plannedEnd}</time>
         </Detail>
-        <Detail label="Actual">
+        <Detail label={t('scheduling.actual')}>
           {item.actualStart === null ? '--' : (
             <>
               <time dateTime={item.actualStart}>{item.actualStart}</time>
-              {item.actualEnd === null ? ' Open' : (
+              {item.actualEnd === null ? ` ${t('scheduling.open')}` : (
                 <>
                   {' – '}
                   <time dateTime={item.actualEnd}>{item.actualEnd}</time>
@@ -132,11 +141,13 @@ export function ScheduleItemDetails({ item, now }: ScheduleItemDetailsProps) {
             </>
           )}
         </Detail>
-        <Detail label="Deviation">{formatItemDeviation(item, now)}</Detail>
-        <Detail label="Delay reason">{displayValue(item.delayReason)}</Detail>
-        <Detail label="Frozen">{item.isFrozen ? 'Yes' : 'No'}</Detail>
+        <Detail label={t('scheduling.deviation')}>{formatItemDeviation(item, now)}</Detail>
+        <Detail label={t('scheduling.delayReason')}>{displayValue(item.delayReason)}</Detail>
+        <Detail label={t('scheduling.frozen')}>
+          {item.isFrozen ? t('scheduling.yes') : t('scheduling.no')}
+        </Detail>
         {locationFields.map(([key, label]) => hasContextProperty(context, key) ? (
-          <Detail key={key} label={label}>{displayValue(readContextValue(context, key))}</Detail>
+          <Detail key={key} label={t(label)}>{displayValue(readContextValue(context, key))}</Detail>
         ) : null)}
       </dl>
     </section>

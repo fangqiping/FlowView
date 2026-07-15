@@ -1,4 +1,6 @@
 import type { SchedulePlanItemModel } from '../types'
+import type { MessageKey } from '../i18n/messages'
+import { useI18n } from '../i18n/useI18n'
 import {
   getTimelineGeometry,
   isDelayedItem,
@@ -12,14 +14,14 @@ export interface FlowScheduleTimelineProps {
   now: string
 }
 
-const LIFECYCLE_STATUS_LABELS = [
-  'Planned',
-  'Waiting',
-  'Running',
-  'Completed',
-  'Delayed',
-  'Blocked',
-  'Canceled',
+const LIFECYCLE_STATUS_KEYS: MessageKey[] = [
+  'scheduling.statusPlanned',
+  'scheduling.statusWaiting',
+  'scheduling.statusRunning',
+  'scheduling.statusCompleted',
+  'scheduling.statusDelayed',
+  'scheduling.statusBlocked',
+  'scheduling.statusCanceled',
 ] as const
 
 const LIFECYCLE_STATUS_CLASSES = [
@@ -32,9 +34,9 @@ const LIFECYCLE_STATUS_CLASSES = [
   'canceled',
 ] as const
 
-function getLifecycleStatus(status: number): { label: string; className: string } {
+function getLifecycleStatus(status: number): { labelKey: MessageKey | null; className: string } {
   return {
-    label: LIFECYCLE_STATUS_LABELS[status] ?? `Unknown (${status})`,
+    labelKey: LIFECYCLE_STATUS_KEYS[status] ?? null,
     className: LIFECYCLE_STATUS_CLASSES[status] ?? 'unknown',
   }
 }
@@ -125,6 +127,7 @@ interface FlowItemRowProps {
 }
 
 function FlowItemRow({ item, horizonStart, horizonEnd, now }: FlowItemRowProps) {
+  const { t } = useI18n()
   const plannedGeometry = getTimelineGeometry(
     item.plannedStart,
     item.plannedEnd,
@@ -136,9 +139,17 @@ function FlowItemRow({ item, horizonStart, horizonEnd, now }: FlowItemRowProps) 
     ? null
     : getTimelineGeometry(actualInterval.start, actualInterval.end, horizonStart, horizonEnd)
   const delayed = actualInterval !== null && isDelayedItem(item, now)
-  const statusLabel = actualInterval === null ? 'Not started' : delayed ? 'Delayed' : 'On time'
+  const statusLabel = actualInterval === null
+    ? t('scheduling.notStarted')
+    : delayed
+      ? t('scheduling.statusDelayed')
+      : t('scheduling.onTime')
   const lifecycleStatus = getLifecycleStatus(item.status)
-  const identity = `${item.displayLabel}; node ${item.nodeId}; occurrence ${item.occurrence}`
+  const identity = t('scheduling.flowItemIdentity', {
+    label: item.displayLabel,
+    node: item.nodeId,
+    occurrence: item.occurrence,
+  })
 
   return (
     <li
@@ -147,22 +158,23 @@ function FlowItemRow({ item, horizonStart, horizonEnd, now }: FlowItemRowProps) 
     >
       <div className="flow-schedule-row-label">
         <strong>{item.displayLabel}</strong>
-        <span>Node {item.nodeId}</span>
-        <span>Occurrence {item.occurrence}</span>
+        <span>{t('scheduling.node')} {item.nodeId}</span>
+        <span>{t('scheduling.occurrence')} {item.occurrence}</span>
         <span>
-          Planned{' '}
+          {t('scheduling.planned')}{' '}
           <time dateTime={item.plannedStart}>{item.plannedStart}</time>
           {' - '}
           <time dateTime={item.plannedEnd}>{item.plannedEnd}</time>
         </span>
         <span>
-          Actual{' '}
-          {actualInterval === null ? 'Not started' : (
+          {t('scheduling.actual')}{' '}
+          {actualInterval === null ? t('scheduling.notStarted') : (
             <>
               <time dateTime={actualInterval.start}>{actualInterval.start}</time>
               {item.actualEnd === null ? (
                 <>
-                  {' Open through '}
+                  {' '}
+                  {t('scheduling.openThrough')}{' '}
                   <time dateTime={actualInterval.end}>{actualInterval.end}</time>
                 </>
               ) : (
@@ -175,9 +187,13 @@ function FlowItemRow({ item, horizonStart, horizonEnd, now }: FlowItemRowProps) 
           )}
         </span>
         <span className={`flow-schedule-lifecycle ${lifecycleStatus.className}`}>
-          {lifecycleStatus.label}
+          {lifecycleStatus.labelKey === null
+            ? t('scheduling.unknownValue', { value: item.status })
+            : t(lifecycleStatus.labelKey)}
         </span>
-        <span className="flow-schedule-status">{statusLabel}</span>
+        <span className={`flow-schedule-status ${actualInterval === null ? 'planned' : delayed ? 'delayed' : 'on-time'}`}>
+          {statusLabel}
+        </span>
       </div>
       <div className="flow-schedule-track">
         {plannedGeometry.widthPercent > 0 ? (
@@ -215,22 +231,23 @@ export function FlowScheduleTimeline({
   horizonEnd,
   now,
 }: FlowScheduleTimelineProps) {
+  const { t } = useI18n()
   const flowTaskGroups = groupNodeExecutions(items)
 
   if (flowTaskGroups.length === 0) {
-    return <div role="status">No flow schedule items</div>
+    return <div role="status">{t('scheduling.noFlowItems')}</div>
   }
 
   return (
     <div className="flow-schedule-timeline">
       {flowTaskGroups.map((group) => (
         <section
-          aria-label={`FlowTask ${group.flowTaskId}`}
+          aria-label={t('scheduling.flowTaskValue', { id: group.flowTaskId })}
           className="flow-schedule-group"
           key={group.flowTaskId}
           role="group"
         >
-          <h3>FlowTask {group.flowTaskId}</h3>
+          <h3>{t('scheduling.flowTaskValue', { id: group.flowTaskId })}</h3>
           <ul className="flow-schedule-items">
             {group.items.map((item) => (
               <FlowItemRow

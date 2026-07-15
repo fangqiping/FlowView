@@ -5,6 +5,8 @@ import type {
   SchedulePlanModel,
   ScheduleSolveAttemptModel,
 } from '../types'
+import type { MessageKey } from '../i18n/messages'
+import { useI18n } from '../i18n/useI18n'
 
 export interface ScheduleVersionComparisonProps {
   comparison: SchedulePlanComparisonModel | null
@@ -14,19 +16,30 @@ export interface ScheduleVersionComparisonProps {
   error?: Error | null
 }
 
-const CHANGE_KIND_LABELS = ['Added', 'Removed', 'Changed'] as const
+const CHANGE_KIND_KEYS: MessageKey[] = [
+  'scheduling.changeAdded',
+  'scheduling.changeRemoved',
+  'scheduling.changeChanged',
+] as const
 
-function getChangeKindLabel(kind: number): string {
-  return CHANGE_KIND_LABELS[kind] ?? `Unknown (${kind})`
+function getChangeKindKey(kind: number): MessageKey | null {
+  return CHANGE_KIND_KEYS[kind] ?? null
 }
 
-function displayItemIdentity(item: SchedulePlanItemModel | null): string {
+function displayItemIdentity(
+  item: SchedulePlanItemModel | null,
+  formatIdentity: (params: Record<string, string | number>) => string,
+): string {
   if (item === null) return '--'
 
   const resourceIdentity = item.resourceType !== null || item.resourceId !== null
     ? `${item.resourceType ?? '--'} / ${item.resourceId ?? '--'}`
     : '--'
-  return `${item.displayLabel}; node ${item.nodeId}; resource ${resourceIdentity}`
+  return formatIdentity({
+    label: item.displayLabel,
+    node: item.nodeId,
+    resource: resourceIdentity,
+  })
 }
 
 function findItem(plan: SchedulePlanModel | null, itemId: number | null): SchedulePlanItemModel | null {
@@ -58,24 +71,30 @@ function Timestamp({ value }: { value: string | null }) {
 }
 
 function FailedSolveSummary({ attempt }: { attempt: ScheduleSolveAttemptModel }) {
+  const { t } = useI18n()
+
   return (
-    <aside aria-label="Failed solve attempt" className="schedule-solve-failure" role="alert">
-      <h3>Failed solve attempt</h3>
+    <aside
+      aria-label={t('scheduling.failedSolveAttempt')}
+      className="schedule-solve-failure"
+      role="alert"
+    >
+      <h3>{t('scheduling.failedSolveAttempt')}</h3>
       <dl>
         <div>
-          <dt>Failure reason</dt>
+          <dt>{t('scheduling.failureReason')}</dt>
           <dd>{attempt.failureReason ?? '--'}</dd>
         </div>
         <div>
-          <dt>Candidate count</dt>
+          <dt>{t('scheduling.candidateCount')}</dt>
           <dd>{attempt.candidateCount}</dd>
         </div>
         <div>
-          <dt>Started</dt>
+          <dt>{t('scheduling.started')}</dt>
           <dd><Timestamp value={attempt.startedAt} /></dd>
         </div>
         <div>
-          <dt>Finished</dt>
+          <dt>{t('scheduling.finished')}</dt>
           <dd><Timestamp value={attempt.finishedAt} /></dd>
         </div>
       </dl>
@@ -90,31 +109,39 @@ interface ChangeEntryProps {
 }
 
 function ChangeEntry({ change, currentPlan, previousPlan }: ChangeEntryProps) {
+  const { t } = useI18n()
   const currentItem = findItem(currentPlan, change.currentItemId)
   const previousItem = findItem(previousPlan, change.previousItemId)
+  const changeKindKey = getChangeKindKey(change.kind)
+  const formatIdentity = (params: Record<string, string | number>) =>
+    t('scheduling.comparisonItemIdentity', params)
 
   return (
     <li className="schedule-comparison-change">
-      <h3>{getChangeKindLabel(change.kind)}</h3>
+      <h3>
+        {changeKindKey === null
+          ? t('scheduling.unknownValue', { value: change.kind })
+          : t(changeKindKey)}
+      </h3>
       <dl>
         <div>
-          <dt>Current item</dt>
-          <dd>{displayItemIdentity(currentItem)}</dd>
+          <dt>{t('scheduling.currentItem')}</dt>
+          <dd>{displayItemIdentity(currentItem, formatIdentity)}</dd>
         </div>
         <div>
-          <dt>Previous item</dt>
-          <dd>{displayItemIdentity(previousItem)}</dd>
+          <dt>{t('scheduling.previousItem')}</dt>
+          <dd>{displayItemIdentity(previousItem, formatIdentity)}</dd>
         </div>
         <div>
-          <dt>PreviousStart</dt>
+          <dt>{t('scheduling.previousStart')}</dt>
           <dd><Timestamp value={change.previousStart} /></dd>
         </div>
         <div>
-          <dt>CurrentStart</dt>
+          <dt>{t('scheduling.currentStart')}</dt>
           <dd><Timestamp value={change.currentStart} /></dd>
         </div>
         <div>
-          <dt>Reason</dt>
+          <dt>{t('scheduling.reason')}</dt>
           <dd className="schedule-comparison-reason">{change.reason ?? '--'}</dd>
         </div>
       </dl>
@@ -129,6 +156,7 @@ export function ScheduleVersionComparison({
   isLoading = false,
   error = null,
 }: ScheduleVersionComparisonProps) {
+  const { t } = useI18n()
   const matchedCurrentPlan = comparison !== null && currentPlan?.id === comparison.planId
     ? currentPlan
     : null
@@ -136,28 +164,38 @@ export function ScheduleVersionComparison({
     ? previousPlan
     : null
   const heading = comparison === null
-    ? 'Schedule comparison'
+    ? t('scheduling.comparison')
     : matchedCurrentPlan !== null && matchedPreviousPlan !== null
-      ? `Schedule comparison v${matchedPreviousPlan.version} -> v${matchedCurrentPlan.version}`
-      : `Schedule comparison plan ${comparison.previousPlanId} -> plan ${comparison.planId}`
+      ? t('scheduling.comparisonVersions', {
+          previousVersion: matchedPreviousPlan.version,
+          currentVersion: matchedCurrentPlan.version,
+        })
+      : t('scheduling.comparisonPlans', {
+          previousPlanId: comparison.previousPlanId,
+          planId: comparison.planId,
+        })
   const solveSummaryPlan = comparison === null ? currentPlan : matchedCurrentPlan
   const keyedChanges = comparison === null ? [] : addStableKeys(comparison.changes)
 
   return (
-    <section aria-label="Schedule version comparison" className="schedule-version-comparison">
+    <section aria-label={t('scheduling.versionComparison')} className="schedule-version-comparison">
       <h2>{heading}</h2>
-      {isLoading ? <div role="status">Loading schedule comparison</div> : null}
+      {isLoading ? <div role="status">{t('scheduling.loadingComparison')}</div> : null}
       {!isLoading && error !== null ? (
-        <div role="alert">Schedule comparison error: {error.message}</div>
+        <div role="alert">
+          {t('scheduling.comparisonError', {
+            message: error.message || t('scheduling.comparisonLoadFailure'),
+          })}
+        </div>
       ) : null}
       {solveSummaryPlan?.latestSolveAttempt?.status === 3 ? (
         <FailedSolveSummary attempt={solveSummaryPlan.latestSolveAttempt} />
       ) : null}
       {!isLoading && error === null && comparison === null ? (
-        <div role="status">No schedule comparison available</div>
+        <div role="status">{t('scheduling.noComparison')}</div>
       ) : null}
       {!isLoading && error === null && comparison !== null && comparison.changes.length === 0 ? (
-        <div role="status">No schedule changes</div>
+        <div role="status">{t('scheduling.noChanges')}</div>
       ) : null}
       {!isLoading && error === null && comparison !== null && comparison.changes.length > 0 ? (
         <ol className="schedule-comparison-changes">

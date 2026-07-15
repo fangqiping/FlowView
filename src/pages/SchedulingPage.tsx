@@ -8,6 +8,8 @@ import { ScheduleItemDetails } from '../components/ScheduleItemDetails'
 import { ScheduleVersionComparison } from '../components/ScheduleVersionComparison'
 import { SchedulingSummary } from '../components/SchedulingSummary'
 import { api } from '../lib/api'
+import type { MessageKey } from '../i18n/messages'
+import { useI18n } from '../i18n/useI18n'
 import {
   getTimelineGeometry,
   groupResourceOccupancies,
@@ -22,17 +24,17 @@ import type {
 
 type SchedulingView = 'resources' | 'flow' | 'actual' | 'versions'
 
-const VIEW_OPTIONS: { id: SchedulingView; label: string }[] = [
-  { id: 'resources', label: 'Resources' },
-  { id: 'flow', label: 'Flow' },
-  { id: 'actual', label: 'Plan vs actual' },
-  { id: 'versions', label: 'Versions' },
+const VIEW_OPTIONS: { id: SchedulingView; labelKey: MessageKey }[] = [
+  { id: 'resources', labelKey: 'scheduling.resources' },
+  { id: 'flow', labelKey: 'scheduling.flow' },
+  { id: 'actual', labelKey: 'scheduling.planActual' },
+  { id: 'versions', labelKey: 'scheduling.versions' },
 ]
 
 function toError(caught: unknown): Error {
   return caught instanceof Error
     ? caught
-    : new Error('Failed to load the schedule comparison.')
+    : new Error()
 }
 
 function visibleOccupancies(
@@ -163,6 +165,7 @@ function VersionsView({
   selectedPlanId: number | null
   onSelectPlan(planId: number): void
 }) {
+  const { t } = useI18n()
   const plans = history.length > 0 ? history : [currentPlan]
   const defaultPlan = history.find((plan) => plan.id === currentPlan.id)
     ?? history[0]
@@ -180,7 +183,7 @@ function VersionsView({
   return (
     <div className="scheduling-versions-view">
       <label className="scheduling-version-selector">
-        <span>Schedule version</span>
+        <span>{t('scheduling.scheduleVersion')}</span>
         <select
           onChange={(event) => onSelectPlan(Number(event.target.value))}
           value={selectedPlan.id}
@@ -214,6 +217,7 @@ export function SchedulingPage({
 }: {
   apiOverride?: Pick<typeof api, 'compareSchedulePlans'>
 }) {
+  const { t } = useI18n()
   const {
     plan,
     history,
@@ -239,11 +243,11 @@ export function SchedulingPage({
         actions={
           <>
             <button
-              aria-label="Refresh schedule"
+              aria-label={t('scheduling.refreshSchedule')}
               className="icon-button scheduling-refresh-button"
               disabled={isLoading}
               onClick={() => void refresh()}
-              title="Refresh schedule"
+              title={t('scheduling.refreshSchedule')}
               type="button"
             >
               {isLoading
@@ -260,12 +264,12 @@ export function SchedulingPage({
               {isReplanning
                 ? <LoaderCircle aria-hidden="true" size={16} />
                 : <RefreshCw aria-hidden="true" size={16} />}
-              <span>Replan now</span>
+              <span>{t('scheduling.replanNow')}</span>
             </button>
           </>
         }
-        eyebrow="Operations"
-        title="Global scheduling"
+        eyebrow={t('scheduling.eyebrow')}
+        title={t('scheduling.title')}
       />
 
       {error !== null ? (
@@ -274,7 +278,7 @@ export function SchedulingPage({
 
       {plan === null ? (
         <div className="scheduling-page-state" role="status">
-          {isLoading ? 'Loading schedule workbench' : 'No current schedule plan'}
+          {isLoading ? t('scheduling.loadingWorkbench') : t('scheduling.noCurrentPlan')}
         </div>
       ) : (
         <>
@@ -285,7 +289,7 @@ export function SchedulingPage({
           />
 
           <div
-            aria-label="Scheduling view"
+            aria-label={t('scheduling.view')}
             className="scheduling-view-switcher"
             role="group"
           >
@@ -296,7 +300,7 @@ export function SchedulingPage({
                 onClick={() => setView(option.id)}
                 type="button"
               >
-                {option.label}
+                {t(option.labelKey)}
               </button>
             ))}
           </div>

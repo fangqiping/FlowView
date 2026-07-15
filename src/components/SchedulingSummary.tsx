@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 import type { SchedulePlanModel } from '../types'
+import type { MessageKey } from '../i18n/messages'
+import { useI18n } from '../i18n/useI18n'
 
 export interface SchedulingSummaryProps {
   plan: SchedulePlanModel
@@ -7,17 +9,22 @@ export interface SchedulingSummaryProps {
   isLoading: boolean
 }
 
-const PLAN_STATUS_LABELS = ['Draft', 'Committed', 'Superseded', 'Failed'] as const
-const SOLVER_STATUS_LABELS = [
-  'Unknown',
-  'Model invalid',
-  'Feasible',
-  'Infeasible',
-  'Optimal',
+const PLAN_STATUS_KEYS: MessageKey[] = [
+  'scheduling.planDraft',
+  'scheduling.planCommitted',
+  'scheduling.planSuperseded',
+  'scheduling.planFailed',
+] as const
+const SOLVER_STATUS_KEYS: MessageKey[] = [
+  'scheduling.solverUnknown',
+  'scheduling.solverModelInvalid',
+  'scheduling.solverFeasible',
+  'scheduling.solverInfeasible',
+  'scheduling.solverOptimal',
 ] as const
 
-function statusLabel(labels: readonly string[], status: number): string {
-  return labels[status] ?? `Unknown (${status})`
+function statusKey(keys: readonly MessageKey[], status: number): MessageKey | null {
+  return keys[status] ?? null
 }
 
 function latestExpectedCompletion(plan: SchedulePlanModel): string | null {
@@ -57,6 +64,7 @@ export function SchedulingSummary({
   lastUpdatedAt,
   isLoading,
 }: SchedulingSummaryProps) {
+  const { t } = useI18n()
   const nodeExecutions = plan.items.filter((item) => item.itemKind === 0)
   const occupancies = plan.items.filter((item) => item.itemKind === 1)
   const resourceKeys = new Set(
@@ -73,43 +81,47 @@ export function SchedulingSummary({
   const lastUpdated = lastUpdatedAt?.toISOString() ?? null
 
   return (
-    <section aria-label="Scheduling summary" className="scheduling-summary">
+    <section aria-label={t('scheduling.summary')} className="scheduling-summary">
       <dl className="scheduling-summary-list">
-        <SummaryEntry label="Plan version">v{plan.version}</SummaryEntry>
-        <SummaryEntry label="Plan status">
-          {statusLabel(PLAN_STATUS_LABELS, plan.status)}
+        <SummaryEntry label={t('scheduling.planVersion')}>v{plan.version}</SummaryEntry>
+        <SummaryEntry label={t('scheduling.planStatus')}>
+          {statusKey(PLAN_STATUS_KEYS, plan.status) === null
+            ? t('scheduling.unknownValue', { value: plan.status })
+            : t(statusKey(PLAN_STATUS_KEYS, plan.status)!)}
         </SummaryEntry>
-        <SummaryEntry label="Solver status">
-          {statusLabel(SOLVER_STATUS_LABELS, plan.solverStatus)}
+        <SummaryEntry label={t('scheduling.solverStatus')}>
+          {statusKey(SOLVER_STATUS_KEYS, plan.solverStatus) === null
+            ? t('scheduling.unknownValue', { value: plan.solverStatus })
+            : t(statusKey(SOLVER_STATUS_KEYS, plan.solverStatus)!)}
         </SummaryEntry>
-        <SummaryEntry label="Horizon start">
+        <SummaryEntry label={t('scheduling.horizonStart')}>
           <Timestamp value={plan.horizonStart} />
         </SummaryEntry>
-        <SummaryEntry label="Horizon end">
+        <SummaryEntry label={t('scheduling.horizonEnd')}>
           <Timestamp value={plan.horizonEnd} />
         </SummaryEntry>
-        <SummaryEntry label="Waiting">
+        <SummaryEntry label={t('scheduling.waiting')}>
           {nodeExecutions.filter((item) => item.status === 1).length}
         </SummaryEntry>
-        <SummaryEntry label="Running">
+        <SummaryEntry label={t('scheduling.running')}>
           {nodeExecutions.filter((item) => item.status === 2).length}
         </SummaryEntry>
-        <SummaryEntry label="Delayed">
+        <SummaryEntry label={t('scheduling.delayed')}>
           {nodeExecutions.filter((item) => item.status === 4).length}
         </SummaryEntry>
-        <SummaryEntry label="Resource occupancies">{occupancies.length}</SummaryEntry>
-        <SummaryEntry label="Distinct resources">{resourceKeys.size}</SummaryEntry>
-        <SummaryEntry label="Open occupancies">{openOccupancies}</SummaryEntry>
-        <SummaryEntry label="Expected completion">
+        <SummaryEntry label={t('scheduling.resourceOccupancies')}>{occupancies.length}</SummaryEntry>
+        <SummaryEntry label={t('scheduling.distinctResources')}>{resourceKeys.size}</SummaryEntry>
+        <SummaryEntry label={t('scheduling.openOccupancies')}>{openOccupancies}</SummaryEntry>
+        <SummaryEntry label={t('scheduling.expectedCompletion')}>
           <Timestamp value={expectedCompletion} />
         </SummaryEntry>
-        <SummaryEntry label="Last updated">
+        <SummaryEntry label={t('scheduling.lastUpdated')}>
           <Timestamp value={lastUpdated} />
         </SummaryEntry>
       </dl>
       {isLoading ? (
         <div className="scheduling-summary-refreshing" role="status">
-          Refreshing
+          {t('scheduling.refreshing')}
         </div>
       ) : null}
     </section>

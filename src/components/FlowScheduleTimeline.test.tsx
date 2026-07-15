@@ -1,5 +1,7 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render as rtlRender, screen, within } from '@testing-library/react'
+import type { ReactElement } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
+import { I18nProvider } from '../i18n/I18nProvider'
 import type { SchedulePlanItemModel } from '../types'
 import { FlowScheduleTimeline } from './FlowScheduleTimeline'
 
@@ -8,6 +10,11 @@ const HORIZON_END = '2026-07-15T12:00:00.000Z'
 const NOW = '2026-07-15T11:00:00.000Z'
 
 afterEach(cleanup)
+
+function render(ui: ReactElement) {
+  localStorage.setItem('flowview.language', 'en-US')
+  return rtlRender(ui, { wrapper: I18nProvider })
+}
 
 function makeItem(overrides: Partial<SchedulePlanItemModel> = {}): SchedulePlanItemModel {
   return {

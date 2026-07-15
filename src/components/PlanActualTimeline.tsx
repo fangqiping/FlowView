@@ -1,4 +1,6 @@
 import type { SchedulePlanItemModel } from '../types'
+import type { MessageKey } from '../i18n/messages'
+import { useI18n } from '../i18n/useI18n'
 import {
   getTimelineGeometry,
   groupResourceOccupancies,
@@ -13,14 +15,14 @@ export interface PlanActualTimelineProps {
   now: string
 }
 
-const LIFECYCLE_STATUS_LABELS = [
-  'Planned',
-  'Waiting',
-  'Running',
-  'Completed',
-  'Delayed',
-  'Blocked',
-  'Canceled',
+const LIFECYCLE_STATUS_KEYS: MessageKey[] = [
+  'scheduling.statusPlanned',
+  'scheduling.statusWaiting',
+  'scheduling.statusRunning',
+  'scheduling.statusCompleted',
+  'scheduling.statusDelayed',
+  'scheduling.statusBlocked',
+  'scheduling.statusCanceled',
 ] as const
 
 const LIFECYCLE_STATUS_CLASSES = [
@@ -33,9 +35,9 @@ const LIFECYCLE_STATUS_CLASSES = [
   'canceled',
 ] as const
 
-function getLifecycleStatus(status: number): { label: string; className: string } {
+function getLifecycleStatus(status: number): { labelKey: MessageKey | null; className: string } {
   return {
-    label: LIFECYCLE_STATUS_LABELS[status] ?? `Unknown (${status})`,
+    labelKey: LIFECYCLE_STATUS_KEYS[status] ?? null,
     className: LIFECYCLE_STATUS_CLASSES[status] ?? 'unknown',
   }
 }
@@ -49,6 +51,7 @@ interface ItemRowProps {
 }
 
 function ItemRow({ item, resourceIdentity, horizonStart, horizonEnd, now }: ItemRowProps) {
+  const { t } = useI18n()
   const plannedGeometry = getTimelineGeometry(
     item.plannedStart,
     item.plannedEnd,
@@ -60,9 +63,16 @@ function ItemRow({ item, resourceIdentity, horizonStart, horizonEnd, now }: Item
     ? null
     : getTimelineGeometry(actualInterval.start, actualInterval.end, horizonStart, horizonEnd)
   const delayed = actualInterval !== null && isDelayedItem(item, now)
-  const statusLabel = actualInterval === null ? 'Not started' : delayed ? 'Delayed' : 'On time'
+  const statusLabel = actualInterval === null
+    ? t('scheduling.notStarted')
+    : delayed
+      ? t('scheduling.statusDelayed')
+      : t('scheduling.onTime')
   const lifecycleStatus = getLifecycleStatus(item.status)
-  const identity = `${item.displayLabel}; resource ${resourceIdentity}`
+  const identity = t('scheduling.planActualItemIdentity', {
+    label: item.displayLabel,
+    resource: resourceIdentity,
+  })
 
   return (
     <li
@@ -71,21 +81,22 @@ function ItemRow({ item, resourceIdentity, horizonStart, horizonEnd, now }: Item
     >
       <div className="plan-actual-row-label">
         <strong>{item.displayLabel}</strong>
-        <span>Resource {resourceIdentity}</span>
+        <span>{t('scheduling.resourceValue', { resource: resourceIdentity })}</span>
         <span>
-          Planned{' '}
+          {t('scheduling.planned')}{' '}
           <time dateTime={item.plannedStart}>{item.plannedStart}</time>
           {' - '}
           <time dateTime={item.plannedEnd}>{item.plannedEnd}</time>
         </span>
         <span>
-          Actual{' '}
-          {actualInterval === null ? 'Not started' : (
+          {t('scheduling.actual')}{' '}
+          {actualInterval === null ? t('scheduling.notStarted') : (
             <>
               <time dateTime={actualInterval.start}>{actualInterval.start}</time>
               {item.actualEnd === null ? (
                 <>
-                  {' Open through '}
+                  {' '}
+                  {t('scheduling.openThrough')}{' '}
                   <time dateTime={actualInterval.end}>{actualInterval.end}</time>
                 </>
               ) : (
@@ -98,9 +109,13 @@ function ItemRow({ item, resourceIdentity, horizonStart, horizonEnd, now }: Item
           )}
         </span>
         <span className={`plan-actual-lifecycle ${lifecycleStatus.className}`}>
-          {lifecycleStatus.label}
+          {lifecycleStatus.labelKey === null
+            ? t('scheduling.unknownValue', { value: item.status })
+            : t(lifecycleStatus.labelKey)}
         </span>
-        <span className="plan-actual-status">{statusLabel}</span>
+        <span className={`plan-actual-status ${actualInterval === null ? 'planned' : delayed ? 'delayed' : 'on-time'}`}>
+          {statusLabel}
+        </span>
       </div>
       <div className="plan-actual-track">
         {plannedGeometry.widthPercent > 0 ? (
@@ -138,10 +153,11 @@ export function PlanActualTimeline({
   horizonEnd,
   now,
 }: PlanActualTimelineProps) {
+  const { t } = useI18n()
   const resourceGroups = groupResourceOccupancies(items)
 
   if (resourceGroups.length === 0) {
-    return <div role="status">No resource plan or actual items</div>
+    return <div role="status">{t('scheduling.noResourcePlanActualItems')}</div>
   }
 
   return (

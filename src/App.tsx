@@ -7,6 +7,7 @@ import { LocationsPage } from './pages/LocationsPage'
 import { OrdersPage } from './pages/OrdersPage'
 import { PalletsPage } from './pages/PalletsPage'
 import { PortsPage } from './pages/PortsPage'
+import { SchedulingPage } from './pages/SchedulingPage'
 import { SkusPage } from './pages/SkusPage'
 import { TaskExecutionPage } from './pages/TaskExecutionPage'
 
@@ -21,6 +22,7 @@ function App() {
         <Route path="/flows" element={<FlowDefinitionsPage />} />
         <Route path="/flows/:code/editor" element={<FlowEditorPage />} />
         <Route path="/flows/:code/simulation" element={<FlowSimulationPage />} />
+        <Route path="/scheduling" element={<SchedulingPage />} />
         <Route path="/master-data/locations" element={<LocationsPage />} />
         <Route path="/master-data/ports" element={<PortsPage />} />
         <Route path="/master-data/pallets" element={<PalletsPage />} />

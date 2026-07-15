@@ -1,5 +1,10 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import App from '../App'
+import { I18nProvider } from '../i18n/I18nProvider'
+import { NotificationCenterProvider } from '../notifications/NotificationCenterProvider'
 import type {
   SchedulePlanComparisonModel,
   SchedulePlanItemModel,
@@ -139,16 +144,39 @@ function renderPage(
   vi.mocked(useSchedulingWorkbench).mockReturnValue(state)
   return {
     compareSchedulePlans,
-    ...render(<SchedulingPage apiOverride={{ compareSchedulePlans }} />),
+    ...renderWithI18n(<SchedulingPage apiOverride={{ compareSchedulePlans }} />),
   }
+}
+
+function renderWithI18n(ui: ReactElement) {
+  localStorage.setItem('flowview.language', 'en-US')
+  return render(ui, { wrapper: I18nProvider })
 }
 
 afterEach(() => {
   cleanup()
+  localStorage.clear()
   vi.clearAllMocks()
 })
 
 describe('SchedulingPage states and summary', () => {
+  it('renders the scheduling route', () => {
+    localStorage.setItem('flowview.language', 'en-US')
+    vi.mocked(useSchedulingWorkbench).mockReturnValue(createState())
+
+    render(
+      <I18nProvider>
+        <NotificationCenterProvider autoConnect={false}>
+          <MemoryRouter initialEntries={['/scheduling']}>
+            <App />
+          </MemoryRouter>
+        </NotificationCenterProvider>
+      </I18nProvider>,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Global scheduling' })).toBeTruthy()
+  })
+
   it('renders an accessible initial loading state', () => {
     renderPage(createState({ plan: null, isLoading: true, lastUpdatedAt: null }))
 
@@ -426,7 +454,7 @@ describe('SchedulingPage versions', () => {
       compareSchedulePlans: vi.fn().mockReturnValue(nextRequest.promise),
     }
     vi.mocked(useSchedulingWorkbench).mockReturnValue(createState({ history, plan: current }))
-    const { rerender } = render(<SchedulingPage apiOverride={apiA} />)
+    const { rerender } = renderWithI18n(<SchedulingPage apiOverride={apiA} />)
     fireEvent.click(screen.getByRole('button', { name: 'Versions' }))
     expect((await screen.findByRole('alert')).textContent).toContain('API A error')
 
@@ -466,7 +494,7 @@ describe('SchedulingPage versions', () => {
       compareSchedulePlans: vi.fn().mockReturnValue(nextRequest.promise),
     }
     vi.mocked(useSchedulingWorkbench).mockReturnValue(createState({ history, plan: current }))
-    const { rerender } = render(<SchedulingPage apiOverride={apiA} />)
+    const { rerender } = renderWithI18n(<SchedulingPage apiOverride={apiA} />)
     fireEvent.click(screen.getByRole('button', { name: 'Versions' }))
     await waitFor(() => expect(apiA.compareSchedulePlans).toHaveBeenCalledWith(3, 2))
 
