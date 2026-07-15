@@ -140,16 +140,20 @@ function renderPage(
   compareSchedulePlans = vi.fn<
     (planId: number, previousPlanId: number) => Promise<SchedulePlanComparisonModel>
   >(),
+  language: 'en-US' | 'zh-Hans-CN' = 'en-US',
 ) {
   vi.mocked(useSchedulingWorkbench).mockReturnValue(state)
   return {
     compareSchedulePlans,
-    ...renderWithI18n(<SchedulingPage apiOverride={{ compareSchedulePlans }} />),
+    ...renderWithI18n(<SchedulingPage apiOverride={{ compareSchedulePlans }} />, language),
   }
 }
 
-function renderWithI18n(ui: ReactElement) {
-  localStorage.setItem('flowview.language', 'en-US')
+function renderWithI18n(
+  ui: ReactElement,
+  language: 'en-US' | 'zh-Hans-CN' = 'en-US',
+) {
+  localStorage.setItem('flowview.language', language)
   return render(ui, { wrapper: I18nProvider })
 }
 
@@ -200,6 +204,37 @@ describe('SchedulingPage states and summary', () => {
 
     expect(screen.getByRole('alert').textContent).toContain('Schedule service unavailable')
     expect(screen.getByRole('status').textContent).toContain('No current schedule plan')
+  })
+
+  it('localizes the scheduling page and its error states in Chinese', () => {
+    const compareSchedulePlans = vi.fn<
+      (planId: number, previousPlanId: number) => Promise<SchedulePlanComparisonModel>
+    >()
+    const { rerender } = renderPage(
+      createState({ error: new Error() }),
+      compareSchedulePlans,
+      'zh-Hans-CN',
+    )
+
+    expect(screen.getByRole('heading', { name: '全局调度' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '资源' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '流程' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '计划与实际' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '版本' })).toBeTruthy()
+    expect(within(screen.getByRole('region', { name: '调度摘要' }))
+      .getByText('已提交')).toBeTruthy()
+    expect(screen.getByRole('alert').textContent).toBe('调度工作台更新失败。')
+
+    vi.mocked(useSchedulingWorkbench).mockReturnValue(createState({
+      plan: null,
+      error: new Error('503 upstream timeout'),
+      lastUpdatedAt: null,
+    }))
+    rerender(<SchedulingPage apiOverride={{ compareSchedulePlans }} />)
+
+    expect(screen.getByRole('alert').textContent)
+      .toBe('调度工作台更新失败：503 upstream timeout')
+    expect(screen.getByRole('status').textContent).toBe('暂无当前调度计划')
   })
 
   it('summarizes the current plan and retains it through a later refresh error', () => {

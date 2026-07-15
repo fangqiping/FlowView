@@ -23,6 +23,8 @@ export type MessageKey =
   | 'scheduling.versions'
   | 'scheduling.scheduleVersion'
   | 'scheduling.comparisonLoadFailure'
+  | 'scheduling.workbenchError'
+  | 'scheduling.workbenchErrorWithDetail'
   | 'scheduling.summary'
   | 'scheduling.planVersion'
   | 'scheduling.planStatus'

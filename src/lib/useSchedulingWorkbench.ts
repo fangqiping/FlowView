@@ -30,7 +30,7 @@ export interface UseSchedulingWorkbenchOptions {
 function toError(caught: unknown): Error {
   return caught instanceof Error
     ? caught
-    : new Error('Failed to update the scheduling workbench.')
+    : new Error()
 }
 
 async function getCurrentPlan(

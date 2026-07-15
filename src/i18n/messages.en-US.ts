@@ -25,6 +25,8 @@ export const enUSMessages: Messages = {
   'scheduling.versions': 'Versions',
   'scheduling.scheduleVersion': 'Schedule version',
   'scheduling.comparisonLoadFailure': 'Failed to load the schedule comparison.',
+  'scheduling.workbenchError': 'Failed to update the scheduling workbench.',
+  'scheduling.workbenchErrorWithDetail': 'Failed to update the scheduling workbench: {detail}',
   'scheduling.summary': 'Scheduling summary',
   'scheduling.planVersion': 'Plan version',
   'scheduling.planStatus': 'Plan status',

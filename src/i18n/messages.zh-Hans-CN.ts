@@ -25,6 +25,8 @@ export const zhHansCNMessages: Messages = {
   'scheduling.versions': '版本',
   'scheduling.scheduleVersion': '调度版本',
   'scheduling.comparisonLoadFailure': '调度计划对比加载失败。',
+  'scheduling.workbenchError': '调度工作台更新失败。',
+  'scheduling.workbenchErrorWithDetail': '调度工作台更新失败：{detail}',
   'scheduling.summary': '调度摘要',
   'scheduling.planVersion': '计划版本',
   'scheduling.planStatus': '计划状态',

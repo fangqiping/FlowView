@@ -512,6 +512,18 @@ describe('useSchedulingWorkbench', () => {
     expect(result.current.error).toBeNull()
   })
 
+  it('leaves unknown failure messages empty for localized presentation', async () => {
+    const { apiClient, getCurrentSchedulePlan, getSchedulePlanHistory } = createApiClient()
+    getCurrentSchedulePlan.mockRejectedValue('network unavailable')
+    getSchedulePlanHistory.mockResolvedValue([])
+
+    const { result } = renderWorkbench(apiClient)
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.error).toEqual(expect.any(Error))
+    expect(result.current.error?.message).toBe('')
+  })
+
   it('shares one POST and its follow-up refresh across duplicate replan calls', async () => {
     const post = deferred<ScheduleSolveAttemptModel>()
     const attempt = createAttempt()
