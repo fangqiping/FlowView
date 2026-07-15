@@ -11,8 +11,11 @@ import { ScheduleVersionComparison } from './ScheduleVersionComparison'
 
 afterEach(cleanup)
 
-function render(ui: ReactElement) {
-  localStorage.setItem('flowview.language', 'en-US')
+function render(
+  ui: ReactElement,
+  language: 'en-US' | 'zh-Hans-CN' = 'en-US',
+) {
+  localStorage.setItem('flowview.language', language)
   return rtlRender(ui, { wrapper: I18nProvider })
 }
 
@@ -356,7 +359,8 @@ describe('ScheduleVersionComparison', () => {
         error={new Error('Comparison unavailable')}
       />,
     )
-    expect(screen.getByRole('alert').textContent).toBe('Schedule comparison error: Comparison unavailable')
+    expect(screen.getByRole('alert').textContent)
+      .toBe('Failed to load the schedule comparison.')
 
     rerender(
       <ScheduleVersionComparison
@@ -366,5 +370,20 @@ describe('ScheduleVersionComparison', () => {
       />,
     )
     expect(screen.getByRole('status').textContent).toBe('No schedule comparison available')
+  })
+
+  it('keeps comparison errors fully localized in Chinese', () => {
+    render(
+      <ScheduleVersionComparison
+        comparison={null}
+        currentPlan={null}
+        previousPlan={null}
+        error={new Error('503 Service Unavailable')}
+      />,
+      'zh-Hans-CN',
+    )
+
+    expect(screen.getByRole('alert').textContent).toBe('调度计划对比加载失败。')
+    expect(screen.queryByText(/503 Service Unavailable/)).toBeNull()
   })
 })

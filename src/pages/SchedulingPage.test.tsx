@@ -202,7 +202,8 @@ describe('SchedulingPage states and summary', () => {
       lastUpdatedAt: null,
     }))
 
-    expect(screen.getByRole('alert').textContent).toContain('Schedule service unavailable')
+    expect(screen.getByRole('alert').textContent)
+      .toBe('Failed to update the scheduling workbench.')
     expect(screen.getByRole('status').textContent).toContain('No current schedule plan')
   })
 
@@ -233,7 +234,8 @@ describe('SchedulingPage states and summary', () => {
     rerender(<SchedulingPage apiOverride={{ compareSchedulePlans }} />)
 
     expect(screen.getByRole('alert').textContent)
-      .toBe('调度工作台更新失败：503 upstream timeout')
+      .toBe('调度工作台更新失败。')
+    expect(screen.queryByText(/503 upstream timeout/)).toBeNull()
     expect(screen.getByRole('status').textContent).toBe('暂无当前调度计划')
   })
 
@@ -247,7 +249,8 @@ describe('SchedulingPage states and summary', () => {
 
     expect(screen.getByRole('heading', { name: 'Global scheduling' })).toBeTruthy()
     expect(screen.getByText('Operations')).toBeTruthy()
-    expect(screen.getByRole('alert').textContent).toContain('Refresh failed')
+    expect(screen.getByRole('alert').textContent)
+      .toBe('Failed to update the scheduling workbench.')
 
     const summary = screen.getByRole('region', { name: 'Scheduling summary' })
     expect(within(summary).getByText('v3')).toBeTruthy()
@@ -326,7 +329,8 @@ describe('SchedulingPage controls and views', () => {
     expect((screen.getByRole('button', { name: 'Replan now' }) as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByRole('button', { name: 'Replan now' }).getAttribute('aria-busy'))
       .toBe('true')
-    expect(screen.getByRole('alert').textContent).toContain('Replan request failed')
+    expect(screen.getByRole('alert').textContent)
+      .toBe('Failed to update the scheduling workbench.')
   })
 
   it('falls back when the explicitly selected occupancy disappears on refresh', () => {
@@ -491,7 +495,9 @@ describe('SchedulingPage versions', () => {
     vi.mocked(useSchedulingWorkbench).mockReturnValue(createState({ history, plan: current }))
     const { rerender } = renderWithI18n(<SchedulingPage apiOverride={apiA} />)
     fireEvent.click(screen.getByRole('button', { name: 'Versions' }))
-    expect((await screen.findByRole('alert')).textContent).toContain('API A error')
+    expect((await screen.findByRole('alert')).textContent)
+      .toBe('Failed to load the schedule comparison.')
+    expect(screen.queryByText(/API A error/)).toBeNull()
 
     rerender(<SchedulingPage apiOverride={apiB} />)
 
@@ -582,7 +588,7 @@ describe('SchedulingPage versions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Versions' }))
 
     expect((await screen.findByRole('alert')).textContent)
-      .toContain('Schedule comparison error: Comparison unavailable')
+      .toBe('Failed to load the schedule comparison.')
   })
 
   it('does not call the API when the selected plan has no previous plan ID', () => {

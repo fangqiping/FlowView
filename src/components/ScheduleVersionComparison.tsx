@@ -182,11 +182,7 @@ export function ScheduleVersionComparison({
       <h2>{heading}</h2>
       {isLoading ? <div role="status">{t('scheduling.loadingComparison')}</div> : null}
       {!isLoading && error !== null ? (
-        <div role="alert">
-          {t('scheduling.comparisonError', {
-            message: error.message || t('scheduling.comparisonLoadFailure'),
-          })}
-        </div>
+        <div role="alert">{t('scheduling.comparisonError')}</div>
       ) : null}
       {solveSummaryPlan?.latestSolveAttempt?.status === 3 ? (
         <FailedSolveSummary attempt={solveSummaryPlan.latestSolveAttempt} />

@@ -236,7 +236,6 @@ export function SchedulingPage({
   const selectedItem = occupancies.find((item) => item.id === selectedItemId)
     ?? occupancies[0]
     ?? null
-  const errorDetail = error?.message.trim() ?? ''
 
   return (
     <div className="page scheduling-page">
@@ -275,9 +274,7 @@ export function SchedulingPage({
 
       {error !== null ? (
         <div className="banner error" role="alert">
-          {errorDetail === ''
-            ? t('scheduling.workbenchError')
-            : t('scheduling.workbenchErrorWithDetail', { detail: errorDetail })}
+          {t('scheduling.workbenchError')}
         </div>
       ) : null}
 
