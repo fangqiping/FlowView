@@ -296,6 +296,83 @@ export interface FlowCatalogModel {
   expressionOperators: ExpressionOperatorModel[]
 }
 
+export type ScheduleItemKind = 0 | 1 | 2
+export type SchedulePlanStatus = 0 | 1 | 2 | 3
+export type SchedulePlanItemStatus = 0 | 1 | 2 | 3 | 4 | 5 | 6
+export type ScheduleTrigger = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+export type ScheduleSolveAttemptStatus = 0 | 1 | 2 | 3
+export type ScheduleSolverStatus = 0 | 1 | 2 | 3 | 4
+export type SchedulePlanChangeKind = 0 | 1 | 2
+
+export interface SchedulePlanModel {
+  id: number
+  version: number
+  previousPlanId: number | null
+  status: SchedulePlanStatus
+  solverStatus: ScheduleSolverStatus
+  trigger: ScheduleTrigger
+  triggerDetail: string
+  horizonStart: string
+  horizonEnd: string
+  createdAt: string
+  committedAt: string | null
+  makespan: string | null
+  items: SchedulePlanItemModel[]
+  latestSolveAttempt: ScheduleSolveAttemptModel | null
+}
+
+export interface SchedulePlanItemModel {
+  id: number
+  planId: number
+  itemKind: ScheduleItemKind
+  flowTaskId: number
+  nodeId: string
+  occurrence: number
+  operationTaskId: number | null
+  plannedStart: string
+  plannedEnd: string
+  actualStart: string | null
+  actualEnd: string | null
+  predictedEnd: string | null
+  expectedDuration: string
+  status: SchedulePlanItemStatus
+  resourceType: string | null
+  resourceId: string | null
+  occupancyIndex: number | null
+  displayLabel: string
+  displayContextJson: string | null
+  delayReason: string | null
+  isFrozen: boolean
+}
+
+export interface ScheduleSolveAttemptModel {
+  id: number
+  previousPlanId: number | null
+  trigger: ScheduleTrigger
+  triggerDetail: string | null
+  startedAt: string
+  finishedAt: string | null
+  status: ScheduleSolveAttemptStatus
+  solverStatus: ScheduleSolverStatus
+  failureReason: string | null
+  candidateCount: number
+}
+
+export interface SchedulePlanComparisonModel {
+  planId: number
+  previousPlanId: number
+  changes: SchedulePlanChangeModel[]
+}
+
+export interface SchedulePlanChangeModel {
+  kind: SchedulePlanChangeKind
+  currentItemId: number | null
+  previousItemId: number | null
+  previousStart: string | null
+  currentStart: string | null
+  reason: string | null
+}
+
 export interface ContentResponse<T> {
   items: T[]
 }

@@ -1,4 +1,4 @@
-import { Bell, Boxes, ClipboardList, GitBranchPlus, MapPinned, Package2, PackageOpen, Tags, Workflow, type LucideIcon } from 'lucide-react'
+import { Bell, Boxes, CalendarClock, ClipboardList, GitBranchPlus, MapPinned, Package2, PackageOpen, Tags, Workflow, type LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { SUPPORTED_LANGUAGES, canonicalizeLanguage } from '../i18n/languages'
@@ -14,6 +14,7 @@ const navItems: Array<{ to: string; labelKey: MessageKey; icon: LucideIcon }> = 
   { to: '/orders/outbound', labelKey: 'nav.outboundOrders', icon: PackageOpen },
   { to: '/flows', labelKey: 'nav.flowDefinitions', icon: Boxes },
   { to: '/flows/inbound-basic/editor', labelKey: 'nav.flowEditor', icon: GitBranchPlus },
+  { to: '/scheduling', labelKey: 'nav.scheduling', icon: CalendarClock },
   { to: '/master-data/locations', labelKey: 'nav.locations', icon: MapPinned },
   { to: '/master-data/ports', labelKey: 'nav.ports', icon: Workflow },
   { to: '/master-data/pallets', labelKey: 'nav.pallets', icon: Package2 },

@@ -1,0 +1,394 @@
+import { LoaderCircle, RefreshCw } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { FlowScheduleTimeline } from '../components/FlowScheduleTimeline'
+import { PageHeader } from '../components/PageHeader'
+import { PlanActualTimeline } from '../components/PlanActualTimeline'
+import { ResourceScheduleLanes } from '../components/ResourceScheduleLanes'
+import { ScheduleItemDetails } from '../components/ScheduleItemDetails'
+import { ScheduleVersionComparison } from '../components/ScheduleVersionComparison'
+import { SchedulingSummary } from '../components/SchedulingSummary'
+import { api } from '../lib/api'
+import type { MessageKey } from '../i18n/messages'
+import { useI18n } from '../i18n/useI18n'
+import {
+  getTimelineGeometry,
+  groupResourceOccupancies,
+  resolveActualInterval,
+} from '../lib/scheduling'
+import { useSchedulingWorkbench } from '../lib/useSchedulingWorkbench'
+import type {
+  SchedulePlanComparisonModel,
+  SchedulePlanItemModel,
+  SchedulePlanModel,
+} from '../types'
+
+type SchedulingView = 'resources' | 'flow' | 'actual' | 'versions'
+
+const VIEW_OPTIONS: { id: SchedulingView; labelKey: MessageKey }[] = [
+  { id: 'resources', labelKey: 'scheduling.resources' },
+  { id: 'flow', labelKey: 'scheduling.flow' },
+  { id: 'actual', labelKey: 'scheduling.planActual' },
+  { id: 'versions', labelKey: 'scheduling.versions' },
+]
+
+function toError(caught: unknown): Error {
+  return caught instanceof Error
+    ? caught
+    : new Error()
+}
+
+function visibleOccupancies(
+  plan: SchedulePlanModel,
+  now: string,
+): SchedulePlanItemModel[] {
+  return groupResourceOccupancies(plan.items).flatMap((lane) =>
+    lane.items.filter((item) => {
+      const actualInterval = item.actualStart === null
+        ? null
+        : resolveActualInterval(item, now, plan.horizonEnd)
+      const interval = actualInterval ?? {
+        start: item.plannedStart,
+        end: item.plannedEnd,
+      }
+      return getTimelineGeometry(
+        interval.start,
+        interval.end,
+        plan.horizonStart,
+        plan.horizonEnd,
+      ).widthPercent > 0
+    }),
+  )
+}
+
+interface ComparisonRequestProps {
+  apiClient: Pick<typeof api, 'compareSchedulePlans'>
+  currentPlan: SchedulePlanModel
+  previousPlan: SchedulePlanModel | null
+  previousPlanId: number
+  refreshToken: number
+}
+
+interface ComparisonRequestIdentity {
+  apiClient: Pick<typeof api, 'compareSchedulePlans'>
+  currentPlanId: number
+  previousPlanId: number
+}
+
+interface ComparisonRequestState {
+  request: ComparisonRequestIdentity
+  comparison: SchedulePlanComparisonModel | null
+  error: Error | null
+}
+
+interface ComparisonRequestLifecycle {
+  request: ComparisonRequestIdentity
+  refreshToken: number
+  status: 'idle' | 'loading' | 'success' | 'error'
+}
+
+function isCurrentComparisonRequest(
+  request: ComparisonRequestIdentity,
+  apiClient: Pick<typeof api, 'compareSchedulePlans'>,
+  currentPlanId: number,
+  previousPlanId: number,
+): boolean {
+  return request.apiClient === apiClient
+    && request.currentPlanId === currentPlanId
+    && request.previousPlanId === previousPlanId
+}
+
+function ComparisonRequest({
+  apiClient,
+  currentPlan,
+  previousPlan,
+  previousPlanId,
+  refreshToken,
+}: ComparisonRequestProps) {
+  const [state, setState] = useState<ComparisonRequestState>(() => ({
+    request: {
+      apiClient,
+      currentPlanId: currentPlan.id,
+      previousPlanId,
+    },
+    comparison: null,
+    error: null,
+  }))
+  const lifecycleRef = useRef<ComparisonRequestLifecycle>({
+    request: {
+      apiClient,
+      currentPlanId: currentPlan.id,
+      previousPlanId,
+    },
+    refreshToken,
+    status: 'idle',
+  })
+  const stateIsCurrent = isCurrentComparisonRequest(
+    state.request,
+    apiClient,
+    currentPlan.id,
+    previousPlanId,
+  )
+  const comparison = stateIsCurrent ? state.comparison : null
+  const error = stateIsCurrent ? state.error : null
+  const isLoading = !stateIsCurrent || (comparison === null && error === null)
+
+  useEffect(() => {
+    const request = {
+      apiClient,
+      currentPlanId: currentPlan.id,
+      previousPlanId,
+    }
+    const lifecycle = lifecycleRef.current
+    const lifecycleIsCurrent = isCurrentComparisonRequest(
+      lifecycle.request,
+      apiClient,
+      currentPlan.id,
+      previousPlanId,
+    )
+    const shouldRetry = lifecycleIsCurrent
+      && lifecycle.status === 'error'
+      && lifecycle.refreshToken !== refreshToken
+    if (lifecycleIsCurrent && lifecycle.status !== 'idle' && !shouldRetry) {
+      return
+    }
+
+    let active = true
+    lifecycleRef.current = { request, refreshToken, status: 'loading' }
+
+    void apiClient.compareSchedulePlans(currentPlan.id, previousPlanId).then(
+      (nextComparison) => {
+        if (active) {
+          lifecycleRef.current = { request, refreshToken, status: 'success' }
+          setState({ request, comparison: nextComparison, error: null })
+        }
+      },
+      (caught: unknown) => {
+        if (active) {
+          lifecycleRef.current = { request, refreshToken, status: 'error' }
+          setState({ request, comparison: null, error: toError(caught) })
+        }
+      },
+    )
+
+    return () => {
+      active = false
+    }
+  }, [apiClient, currentPlan.id, previousPlanId, refreshToken, state.error])
+
+  return (
+    <ScheduleVersionComparison
+      comparison={comparison}
+      currentPlan={currentPlan}
+      error={error}
+      isLoading={isLoading}
+      previousPlan={previousPlan}
+    />
+  )
+}
+
+function VersionsView({
+  apiClient,
+  currentPlan,
+  history,
+  selectedPlanId,
+  onSelectPlan,
+  refreshToken,
+}: {
+  apiClient: Pick<typeof api, 'compareSchedulePlans'>
+  currentPlan: SchedulePlanModel
+  history: SchedulePlanModel[]
+  selectedPlanId: number | null
+  onSelectPlan(planId: number): void
+  refreshToken: number
+}) {
+  const { t } = useI18n()
+  const plans = [currentPlan, ...history.filter((plan) => plan.id !== currentPlan.id)]
+  const defaultPlan = currentPlan
+  const selectedPlan = plans.find((plan) => plan.id === selectedPlanId) ?? defaultPlan
+  const previousPlan = selectedPlan.previousPlanId === null
+    ? null
+    : history.find((plan) => plan.id === selectedPlan.previousPlanId)
+      ?? (currentPlan.id === selectedPlan.previousPlanId ? currentPlan : null)
+  const hasValidIds = Number.isSafeInteger(selectedPlan.id)
+    && selectedPlan.id > 0
+    && Number.isSafeInteger(selectedPlan.previousPlanId)
+    && (selectedPlan.previousPlanId ?? 0) > 0
+
+  return (
+    <div className="scheduling-versions-view">
+      <label className="scheduling-version-selector">
+        <span>{t('scheduling.scheduleVersion')}</span>
+        <select
+          onChange={(event) => onSelectPlan(Number(event.target.value))}
+          value={selectedPlan.id}
+        >
+          {plans.map((plan) => (
+            <option key={plan.id} value={plan.id}>v{plan.version}</option>
+          ))}
+        </select>
+      </label>
+      {hasValidIds && selectedPlan.previousPlanId !== null ? (
+        <ComparisonRequest
+          apiClient={apiClient}
+          currentPlan={selectedPlan}
+          key={`${selectedPlan.id}:${selectedPlan.previousPlanId}`}
+          previousPlan={previousPlan}
+          previousPlanId={selectedPlan.previousPlanId}
+          refreshToken={refreshToken}
+        />
+      ) : (
+        <ScheduleVersionComparison
+          comparison={null}
+          currentPlan={selectedPlan}
+          previousPlan={previousPlan}
+        />
+      )}
+    </div>
+  )
+}
+
+export function SchedulingPage({
+  apiOverride = api,
+}: {
+  apiOverride?: Pick<typeof api, 'compareSchedulePlans'>
+}) {
+  const { t } = useI18n()
+  const {
+    plan,
+    history,
+    error,
+    lastUpdatedAt,
+    isLoading,
+    isReplanning,
+    refresh,
+    replan,
+  } = useSchedulingWorkbench()
+  const [view, setView] = useState<SchedulingView>('resources')
+  const [selectedItemId, setSelectedItemId] = useState<number | null>(null)
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null)
+  const now = new Date().toISOString()
+  const occupancies = plan === null ? [] : visibleOccupancies(plan, now)
+  const selectedItem = occupancies.find((item) => item.id === selectedItemId)
+    ?? occupancies[0]
+    ?? null
+
+  return (
+    <div className="page scheduling-page">
+      <PageHeader
+        actions={
+          <>
+            <button
+              aria-label={t('scheduling.refreshSchedule')}
+              className="icon-button scheduling-refresh-button"
+              disabled={isLoading}
+              onClick={() => void refresh()}
+              title={t('scheduling.refreshSchedule')}
+              type="button"
+            >
+              {isLoading
+                ? <LoaderCircle aria-hidden="true" size={18} />
+                : <RefreshCw aria-hidden="true" size={18} />}
+            </button>
+            <button
+              aria-busy={isReplanning}
+              className="primary-button scheduling-replan-button"
+              disabled={isReplanning}
+              onClick={() => void replan()}
+              type="button"
+            >
+              {isReplanning
+                ? <LoaderCircle aria-hidden="true" size={16} />
+                : <RefreshCw aria-hidden="true" size={16} />}
+              <span>{t('scheduling.replanNow')}</span>
+            </button>
+          </>
+        }
+        eyebrow={t('scheduling.eyebrow')}
+        title={t('scheduling.title')}
+      />
+
+      {error !== null ? (
+        <div className="banner error" role="alert">
+          {t('scheduling.workbenchError')}
+        </div>
+      ) : null}
+
+      {plan === null ? (
+        <div className="scheduling-page-state" role="status">
+          {isLoading ? t('scheduling.loadingWorkbench') : t('scheduling.noCurrentPlan')}
+        </div>
+      ) : (
+        <>
+          <SchedulingSummary
+            isLoading={isLoading}
+            lastUpdatedAt={lastUpdatedAt}
+            plan={plan}
+          />
+
+          <div
+            aria-label={t('scheduling.view')}
+            className="scheduling-view-switcher"
+            role="group"
+          >
+            {VIEW_OPTIONS.map((option) => (
+              <button
+                aria-pressed={view === option.id}
+                key={option.id}
+                onClick={() => setView(option.id)}
+                type="button"
+              >
+                {t(option.labelKey)}
+              </button>
+            ))}
+          </div>
+
+          <div className="scheduling-workbench">
+            {view === 'resources' ? (
+              <div className="scheduling-resource-workbench">
+                <div className="scheduling-resource-timeline">
+                  <ResourceScheduleLanes
+                    horizonEnd={plan.horizonEnd}
+                    horizonStart={plan.horizonStart}
+                    items={plan.items}
+                    now={now}
+                    onSelect={(item) => setSelectedItemId(item.id)}
+                    selectedItemId={selectedItem?.id ?? null}
+                  />
+                </div>
+                <aside className="scheduling-item-inspector">
+                  <ScheduleItemDetails item={selectedItem} now={now} />
+                </aside>
+              </div>
+            ) : null}
+            {view === 'flow' ? (
+              <FlowScheduleTimeline
+                horizonEnd={plan.horizonEnd}
+                horizonStart={plan.horizonStart}
+                items={plan.items}
+                now={now}
+              />
+            ) : null}
+            {view === 'actual' ? (
+              <PlanActualTimeline
+                horizonEnd={plan.horizonEnd}
+                horizonStart={plan.horizonStart}
+                items={plan.items}
+                now={now}
+              />
+            ) : null}
+            {view === 'versions' ? (
+              <VersionsView
+                apiClient={apiOverride}
+                currentPlan={plan}
+                history={history}
+                onSelectPlan={setSelectedPlanId}
+                refreshToken={lastUpdatedAt?.getTime() ?? 0}
+                selectedPlanId={selectedPlanId}
+              />
+            ) : null}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
