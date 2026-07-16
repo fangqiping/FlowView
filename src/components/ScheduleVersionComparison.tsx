@@ -22,8 +22,30 @@ const CHANGE_KIND_KEYS: MessageKey[] = [
   'scheduling.changeChanged',
 ] as const
 
+const STANDARD_CHANGE_REASON_KEYS: Record<string, MessageKey> = {
+  added: 'scheduling.changeAdded',
+  removed: 'scheduling.changeRemoved',
+  changed: 'scheduling.changeChanged',
+  plannedstartchanged: 'scheduling.reasonPlannedStartChanged',
+  resourcechanged: 'scheduling.reasonResourceChanged',
+  occupancyindexchanged: 'scheduling.reasonOccupancyIndexChanged',
+}
+
 function getChangeKindKey(kind: number): MessageKey | null {
   return CHANGE_KIND_KEYS[kind] ?? null
+}
+
+function displayChangeReason(
+  reason: string | null,
+  translate: (key: MessageKey) => string,
+): string {
+  if (reason === null) return '--'
+
+  return reason.split(',').map((part) => {
+    const trimmedPart = part.trim()
+    const key = STANDARD_CHANGE_REASON_KEYS[trimmedPart.toLowerCase()]
+    return key === undefined ? trimmedPart : translate(key)
+  }).join(', ')
 }
 
 function displayItemIdentity(
@@ -142,7 +164,9 @@ function ChangeEntry({ change, currentPlan, previousPlan }: ChangeEntryProps) {
         </div>
         <div>
           <dt>{t('scheduling.reason')}</dt>
-          <dd className="schedule-comparison-reason">{change.reason ?? '--'}</dd>
+          <dd className="schedule-comparison-reason">
+            {displayChangeReason(change.reason, t)}
+          </dd>
         </div>
       </dl>
     </li>

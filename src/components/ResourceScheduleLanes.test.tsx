@@ -154,13 +154,16 @@ describe('ResourceScheduleLanes', () => {
     expect(open.className).toContain('actual')
     expect(open.className).toContain('open')
     expect(open.className).toContain('running')
+    expect(open.getAttribute('style')).toContain('top: 30px')
     expect(closed.getAttribute('style')).toContain('left: 12.5%')
     expect(closed.getAttribute('style')).toContain('width: 37.5%')
     expect(closed.className).toContain('actual')
     expect(closed.className).toContain('completed')
+    expect(closed.getAttribute('style')).toContain('top: 30px')
     expect(planned.getAttribute('style')).toContain('left: 50%')
     expect(planned.getAttribute('style')).toContain('width: 25%')
     expect(planned.className).toContain('planned')
+    expect(planned.getAttribute('style')).toContain('top: 4px')
   })
 
   it('falls back to planned geometry for an invalid actual interval', () => {

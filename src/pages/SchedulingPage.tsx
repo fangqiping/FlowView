@@ -65,6 +65,7 @@ interface ComparisonRequestProps {
   currentPlan: SchedulePlanModel
   previousPlan: SchedulePlanModel | null
   previousPlanId: number
+  refreshToken: number
 }
 
 interface ComparisonRequestIdentity {
@@ -95,6 +96,7 @@ function ComparisonRequest({
   currentPlan,
   previousPlan,
   previousPlanId,
+  refreshToken,
 }: ComparisonRequestProps) {
   const [state, setState] = useState<ComparisonRequestState>(() => ({
     request: {
@@ -139,7 +141,7 @@ function ComparisonRequest({
     return () => {
       active = false
     }
-  }, [apiClient, currentPlan.id, previousPlanId])
+  }, [apiClient, currentPlan.id, previousPlanId, refreshToken])
 
   return (
     <ScheduleVersionComparison
@@ -158,18 +160,18 @@ function VersionsView({
   history,
   selectedPlanId,
   onSelectPlan,
+  refreshToken,
 }: {
   apiClient: Pick<typeof api, 'compareSchedulePlans'>
   currentPlan: SchedulePlanModel
   history: SchedulePlanModel[]
   selectedPlanId: number | null
   onSelectPlan(planId: number): void
+  refreshToken: number
 }) {
   const { t } = useI18n()
-  const plans = history.length > 0 ? history : [currentPlan]
-  const defaultPlan = history.find((plan) => plan.id === currentPlan.id)
-    ?? history[0]
-    ?? currentPlan
+  const plans = [currentPlan, ...history.filter((plan) => plan.id !== currentPlan.id)]
+  const defaultPlan = currentPlan
   const selectedPlan = plans.find((plan) => plan.id === selectedPlanId) ?? defaultPlan
   const previousPlan = selectedPlan.previousPlanId === null
     ? null
@@ -200,6 +202,7 @@ function VersionsView({
           key={`${selectedPlan.id}:${selectedPlan.previousPlanId}`}
           previousPlan={previousPlan}
           previousPlanId={selectedPlan.previousPlanId}
+          refreshToken={refreshToken}
         />
       ) : (
         <ScheduleVersionComparison
@@ -347,6 +350,7 @@ export function SchedulingPage({
                 currentPlan={plan}
                 history={history}
                 onSelectPlan={setSelectedPlanId}
+                refreshToken={lastUpdatedAt?.getTime() ?? 0}
                 selectedPlanId={selectedPlanId}
               />
             ) : null}

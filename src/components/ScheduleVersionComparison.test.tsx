@@ -113,9 +113,9 @@ describe('ScheduleVersionComparison', () => {
     expect(within(changes[0]).getByText('Added')).toBeTruthy()
     expect(within(changes[1]).getByText('Removed')).toBeTruthy()
     expect(within(changes[2]).getByText('Changed')).toBeTruthy()
-    expect(within(changes[0]).getByText('ResourceChanged')).toBeTruthy()
+    expect(within(changes[0]).getByText('Resource changed')).toBeTruthy()
     expect(within(changes[1]).getByText('--', { selector: '.schedule-comparison-reason' })).toBeTruthy()
-    expect(within(changes[2]).getByText('PlannedStartChanged,OccupancyIndexChanged')).toBeTruthy()
+    expect(within(changes[2]).getByText('Planned start changed, Occupancy index changed')).toBeTruthy()
     expect(within(changes[2]).getByText(previousStart, { selector: 'time' }).getAttribute('datetime')).toBe(previousStart)
     expect(within(changes[2]).getByText(currentStart, { selector: 'time' }).getAttribute('datetime')).toBe(currentStart)
   })
@@ -385,5 +385,33 @@ describe('ScheduleVersionComparison', () => {
 
     expect(screen.getByRole('alert').textContent).toBe('调度计划对比加载失败。')
     expect(screen.queryByText(/503 Service Unavailable/)).toBeNull()
+  })
+
+  it('localizes standard server change reasons in Chinese', () => {
+    render(
+      <ScheduleVersionComparison
+        comparison={makeComparison({
+          changes: [
+            { kind: 0, currentItemId: null, previousItemId: null, previousStart: null, currentStart: null, reason: 'Added' },
+            { kind: 1, currentItemId: null, previousItemId: null, previousStart: null, currentStart: null, reason: 'Removed' },
+            { kind: 2, currentItemId: null, previousItemId: null, previousStart: null, currentStart: null, reason: 'Changed' },
+            { kind: 2, currentItemId: null, previousItemId: null, previousStart: null, currentStart: null, reason: 'PlannedStartChanged,ResourceChanged,OccupancyIndexChanged' },
+            { kind: 2, currentItemId: null, previousItemId: null, previousStart: null, currentStart: null, reason: 'Custom constraint' },
+          ],
+        })}
+        currentPlan={makePlan()}
+        previousPlan={makePlan({ id: 9, version: 1 })}
+      />,
+      'zh-Hans-CN',
+    )
+
+    const reasons = Array.from(document.querySelectorAll('.schedule-comparison-reason'))
+    expect(reasons.map((reason) => reason.textContent)).toEqual([
+      '新增',
+      '移除',
+      '变更',
+      '计划开始时间变更, 资源变更, 占用顺序变更',
+      'Custom constraint',
+    ])
   })
 })

@@ -97,6 +97,7 @@ export function ResourceScheduleLanes({
                   onClick={() => onSelect(item)}
                   style={{
                     left: `${geometry.leftPercent}%`,
+                    top: actualInterval === null ? '4px' : '30px',
                     width: `${geometry.widthPercent}%`,
                   }}
                   title={identity}

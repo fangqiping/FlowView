@@ -24,6 +24,7 @@ export interface SchedulingWorkbenchState {
 
 export interface UseSchedulingWorkbenchOptions {
   pollIntervalMs?: number
+  replanTimeoutMs?: number
   apiClient?: SchedulingWorkbenchApi
 }
 
@@ -64,7 +65,7 @@ function clearWhenSettled(promise: Promise<void>, clear: () => void) {
 export function useSchedulingWorkbench(
   options: UseSchedulingWorkbenchOptions = {},
 ): SchedulingWorkbenchState {
-  const { pollIntervalMs = 5000, apiClient = api } = options
+  const { pollIntervalMs = 5000, replanTimeoutMs = 120_000, apiClient = api } = options
   const [plan, setPlan] = useState<SchedulePlanModel | null>(null)
   const [history, setHistory] = useState<SchedulePlanModel[]>([])
   const [error, setError] = useState<Error | null>(null)
@@ -77,6 +78,25 @@ export function useSchedulingWorkbench(
   const refreshPromiseRef = useRef<GenerationPromise | null>(null)
   const replanPromiseRef = useRef<GenerationPromise | null>(null)
   const submittedAttemptRef = useRef<SubmittedAttempt | null>(null)
+  const replanTimeoutIdRef = useRef<number | null>(null)
+  const replanTimeoutMsRef = useRef(replanTimeoutMs)
+
+  const clearReplanTimeout = useCallback(() => {
+    if (replanTimeoutIdRef.current !== null) {
+      window.clearTimeout(replanTimeoutIdRef.current)
+      replanTimeoutIdRef.current = null
+    }
+  }, [])
+
+  const finishSubmittedAttempt = useCallback((generation: number) => {
+    if (submittedAttemptRef.current?.generation !== generation) return
+
+    submittedAttemptRef.current = null
+    clearReplanTimeout()
+    if (mountedRef.current && clientGenerationRef.current === generation) {
+      setIsReplanning(false)
+    }
+  }, [clearReplanTimeout])
 
   const startRefresh = useCallback((
     generation: number,
@@ -143,13 +163,13 @@ export function useSchedulingWorkbench(
 
         const submittedAttempt = submittedAttemptRef.current
         const latestAttempt = nextPlan?.latestSolveAttempt
-        if (
-          submittedAttempt?.generation === generation &&
-          latestAttempt?.id === submittedAttempt.id &&
-          TERMINAL_SOLVE_ATTEMPT_STATUSES.has(latestAttempt.status)
-        ) {
-          submittedAttemptRef.current = null
-          setIsReplanning(false)
+        if (submittedAttempt?.generation === generation && latestAttempt !== null && latestAttempt !== undefined) {
+          const submittedAttemptFinished = latestAttempt.id === submittedAttempt.id
+            && TERMINAL_SOLVE_ATTEMPT_STATUSES.has(latestAttempt.status)
+          const submittedAttemptSuperseded = latestAttempt.id > submittedAttempt.id
+          if (submittedAttemptFinished || submittedAttemptSuperseded) {
+            finishSubmittedAttempt(generation)
+          }
         }
       } catch (caught) {
         if (
@@ -176,7 +196,7 @@ export function useSchedulingWorkbench(
       }
     })
     return work
-  }, [])
+  }, [finishSubmittedAttempt])
 
   const refresh = useCallback((): Promise<void> => {
     return startRefresh(clientGenerationRef.current)
@@ -226,6 +246,13 @@ export function useSchedulingWorkbench(
           generation,
           id: submittedAttempt.id,
         }
+        clearReplanTimeout()
+        const timeoutMs = replanTimeoutMsRef.current
+        if (Number.isFinite(timeoutMs) && timeoutMs >= 0) {
+          replanTimeoutIdRef.current = window.setTimeout(() => {
+            finishSubmittedAttempt(generation)
+          }, timeoutMs)
+        }
         await startRefresh(generation)
       } catch (caught) {
         if (
@@ -233,10 +260,12 @@ export function useSchedulingWorkbench(
           clientGenerationRef.current === generation
         ) {
           if (submittedAttemptRef.current?.generation === generation) {
-            submittedAttemptRef.current = null
+            finishSubmittedAttempt(generation)
           }
           setError(toError(caught))
-          setIsReplanning(false)
+          if (submittedAttemptRef.current?.generation !== generation) {
+            setIsReplanning(false)
+          }
         }
       }
     })()
@@ -249,22 +278,29 @@ export function useSchedulingWorkbench(
       }
     })
     return work
-  }, [startRefresh])
+  }, [clearReplanTimeout, finishSubmittedAttempt, startRefresh])
+
+  useEffect(() => {
+    replanTimeoutMsRef.current = replanTimeoutMs
+  }, [replanTimeoutMs])
 
   useEffect(() => {
     mountedRef.current = true
 
     return () => {
       mountedRef.current = false
+      clearReplanTimeout()
     }
-  }, [])
+  }, [clearReplanTimeout])
 
   useEffect(() => {
+    clearReplanTimeout()
+    submittedAttemptRef.current = null
     apiClientRef.current = apiClient
     clientGenerationRef.current += 1
     const generation = clientGenerationRef.current
     void startRefresh(generation, true)
-  }, [apiClient, startRefresh])
+  }, [apiClient, clearReplanTimeout, startRefresh])
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {

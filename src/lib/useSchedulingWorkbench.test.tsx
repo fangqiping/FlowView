@@ -74,11 +74,16 @@ function createApiClient() {
   }
 }
 
-function renderWorkbench(apiClient: SchedulingWorkbenchApi, pollIntervalMs = 60_000) {
+function renderWorkbench(
+  apiClient: SchedulingWorkbenchApi,
+  pollIntervalMs = 60_000,
+  replanTimeoutMs = 120_000,
+) {
   return renderHook(() =>
     useSchedulingWorkbench({
       apiClient,
       pollIntervalMs,
+      replanTimeoutMs,
     }),
   )
 }
@@ -696,6 +701,55 @@ describe('useSchedulingWorkbench', () => {
       await result.current.refresh()
     })
     expect(result.current.isReplanning).toBe(false)
+  })
+
+  it('clears replanning when a newer attempt supersedes the submitted attempt', async () => {
+    const submittedAttempt = createAttempt({ id: 77 })
+    const newerPendingPlan = createPlan({
+      latestSolveAttempt: createAttempt({ id: 78, status: 0 }),
+    })
+    const { apiClient, getCurrentSchedulePlan, getSchedulePlanHistory, requestScheduleReplan } =
+      createApiClient()
+    getCurrentSchedulePlan
+      .mockResolvedValueOnce(createPlan())
+      .mockResolvedValueOnce(newerPendingPlan)
+    getSchedulePlanHistory.mockResolvedValue([])
+    requestScheduleReplan.mockResolvedValue(submittedAttempt)
+
+    const { result } = renderWorkbench(apiClient)
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    await act(async () => {
+      await result.current.replan()
+    })
+
+    expect(result.current.isReplanning).toBe(false)
+    await act(async () => {
+      await result.current.replan()
+    })
+    expect(requestScheduleReplan).toHaveBeenCalledTimes(2)
+  })
+
+  it('releases replanning after a bounded wait when no current plan exposes the attempt', async () => {
+    const { apiClient, getCurrentSchedulePlan, getSchedulePlanHistory, requestScheduleReplan } =
+      createApiClient()
+    getCurrentSchedulePlan.mockRejectedValue(new ApiError('Not found', 404, null))
+    getSchedulePlanHistory.mockResolvedValue([])
+    requestScheduleReplan.mockResolvedValue(createAttempt({ id: 77 }))
+
+    const { result } = renderWorkbench(apiClient, 60_000, 10)
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    await act(async () => {
+      await result.current.replan()
+    })
+    expect(result.current.isReplanning).toBe(true)
+
+    await waitFor(() => expect(result.current.isReplanning).toBe(false))
+    await act(async () => {
+      await result.current.replan()
+    })
+    expect(requestScheduleReplan).toHaveBeenCalledTimes(2)
   })
 
   it('clears replanning when the submitted attempt fails and permits retry', async () => {

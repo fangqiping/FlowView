@@ -259,8 +259,8 @@ describe('SchedulingPage states and summary', () => {
     expect(within(summary).getByText('Waiting').parentElement?.textContent).toBe('Waiting1')
     expect(within(summary).getByText('Resource occupancies').parentElement?.textContent)
       .toBe('Resource occupancies2')
-    expect(within(summary).getByText('2026-07-15T11:30:00Z').getAttribute('datetime'))
-      .toBe('2026-07-15T11:30:00Z')
+    expect(within(summary).getByText('2026-07-15T11:05:00Z').getAttribute('datetime'))
+      .toBe('2026-07-15T11:05:00Z')
     expect(within(summary).getByText('2026-07-15T12:34:56.000Z').getAttribute('datetime'))
       .toBe('2026-07-15T12:34:56.000Z')
     expect(within(summary).getByRole('status').textContent).toContain('Refreshing')
@@ -386,20 +386,49 @@ describe('SchedulingPage versions', () => {
     await waitFor(() => expect(compare).toHaveBeenCalledWith(2, 1))
   })
 
-  it('uses the first history plan when the current plan is absent from history', async () => {
-    const { previous, oldest } = versionHistory()
+  it('keeps the current plan first when it is absent from history', async () => {
+    const { current, previous, oldest } = versionHistory()
     const compare = vi.fn().mockResolvedValue({
       planId: 2,
       previousPlanId: 1,
       changes: [],
     })
-    renderPage(createState({ history: [previous, oldest] }), compare)
+    renderPage(createState({ history: [previous, oldest], plan: current }), compare)
 
     fireEvent.click(screen.getByRole('button', { name: 'Versions' }))
 
     expect((screen.getByRole('combobox', { name: 'Schedule version' }) as HTMLSelectElement).value)
-      .toBe('2')
-    await waitFor(() => expect(compare).toHaveBeenCalledWith(2, 1))
+      .toBe('3')
+    expect(within(screen.getByRole('combobox', { name: 'Schedule version' }))
+      .getAllByRole('option').map((option) => option.textContent)).toEqual(['v3', 'v2', 'v1'])
+    await waitFor(() => expect(compare).toHaveBeenCalledWith(3, 2))
+  })
+
+  it('retries a failed comparison after the workbench refreshes', async () => {
+    const { current, history } = versionHistory()
+    const compare = vi.fn()
+      .mockRejectedValueOnce(new Error('Temporary comparison failure'))
+      .mockResolvedValueOnce({ planId: 3, previousPlanId: 2, changes: [] })
+    const firstState = createState({
+      history,
+      plan: current,
+      lastUpdatedAt: new Date('2026-07-15T12:00:00Z'),
+    })
+    vi.mocked(useSchedulingWorkbench).mockReturnValue(firstState)
+    const { rerender } = renderWithI18n(
+      <SchedulingPage apiOverride={{ compareSchedulePlans: compare }} />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Versions' }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+
+    vi.mocked(useSchedulingWorkbench).mockReturnValue({
+      ...firstState,
+      lastUpdatedAt: new Date('2026-07-15T12:00:05Z'),
+    })
+    rerender(<SchedulingPage apiOverride={{ compareSchedulePlans: compare }} />)
+
+    await waitFor(() => expect(compare).toHaveBeenCalledTimes(2))
+    expect((await screen.findByRole('status')).textContent).toContain('No schedule changes')
   })
 
   it('shows comparison loading and then passes server results to the comparison view', async () => {

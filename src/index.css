@@ -1163,7 +1163,7 @@ textarea:focus {
   display: grid;
   grid-template-columns: 220px minmax(720px, 1fr);
   align-items: center;
-  height: 52px;
+  height: 78px;
   border-bottom: 1px solid rgba(149, 161, 184, 0.1);
 }
 
@@ -1191,14 +1191,13 @@ textarea:focus {
 }
 
 .resource-schedule-track {
-  height: 32px;
+  height: 58px;
   margin-right: 14px;
   border-radius: 6px;
 }
 
 .resource-occupancy {
   position: absolute;
-  top: 4px;
   height: 22px;
   min-width: 4px;
   padding: 0 7px;

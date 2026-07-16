@@ -31,11 +31,15 @@ function latestExpectedCompletion(plan: SchedulePlanModel): string | null {
   let latest: { value: string; timestamp: number } | null = null
 
   for (const item of plan.items) {
+    const completedEnd = item.status === 3 ? item.actualEnd : null
+    const completedTimestamp = completedEnd === null ? Number.NaN : Date.parse(completedEnd)
     const predictedEnd = item.predictedEnd
     const predictedTimestamp = predictedEnd === null ? Number.NaN : Date.parse(predictedEnd)
-    const value: string = predictedEnd !== null && Number.isFinite(predictedTimestamp)
-      ? predictedEnd
-      : item.plannedEnd
+    const value: string = completedEnd !== null && Number.isFinite(completedTimestamp)
+      ? completedEnd
+      : predictedEnd !== null && Number.isFinite(predictedTimestamp)
+        ? predictedEnd
+        : item.plannedEnd
     const timestamp = Date.parse(value)
 
     if (Number.isFinite(timestamp) && (latest === null || timestamp > latest.timestamp)) {
