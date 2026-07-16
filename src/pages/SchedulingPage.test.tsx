@@ -409,6 +409,7 @@ describe('SchedulingPage versions', () => {
     const compare = vi.fn()
       .mockRejectedValueOnce(new Error('Temporary comparison failure'))
       .mockResolvedValueOnce({ planId: 3, previousPlanId: 2, changes: [] })
+    const apiClient = { compareSchedulePlans: compare }
     const firstState = createState({
       history,
       plan: current,
@@ -416,7 +417,7 @@ describe('SchedulingPage versions', () => {
     })
     vi.mocked(useSchedulingWorkbench).mockReturnValue(firstState)
     const { rerender } = renderWithI18n(
-      <SchedulingPage apiOverride={{ compareSchedulePlans: compare }} />,
+      <SchedulingPage apiOverride={apiClient} />,
     )
     fireEvent.click(screen.getByRole('button', { name: 'Versions' }))
     expect(await screen.findByRole('alert')).toBeTruthy()
@@ -425,10 +426,39 @@ describe('SchedulingPage versions', () => {
       ...firstState,
       lastUpdatedAt: new Date('2026-07-15T12:00:05Z'),
     })
-    rerender(<SchedulingPage apiOverride={{ compareSchedulePlans: compare }} />)
+    rerender(<SchedulingPage apiOverride={apiClient} />)
 
     await waitFor(() => expect(compare).toHaveBeenCalledTimes(2))
     expect((await screen.findByRole('status')).textContent).toContain('No schedule changes')
+  })
+
+  it('does not refetch a successful comparison on every workbench refresh', async () => {
+    const { current, history } = versionHistory()
+    const compare = vi.fn().mockResolvedValue({ planId: 3, previousPlanId: 2, changes: [] })
+    const apiClient = { compareSchedulePlans: compare }
+    const firstState = createState({
+      history,
+      plan: current,
+      lastUpdatedAt: new Date('2026-07-15T12:00:00Z'),
+    })
+    vi.mocked(useSchedulingWorkbench).mockReturnValue(firstState)
+    const { rerender } = renderWithI18n(
+      <SchedulingPage apiOverride={apiClient} />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Versions' }))
+    await waitFor(() => expect(compare).toHaveBeenCalledTimes(1))
+    expect((await screen.findByRole('status')).textContent).toContain('No schedule changes')
+
+    vi.mocked(useSchedulingWorkbench).mockReturnValue({
+      ...firstState,
+      lastUpdatedAt: new Date('2026-07-15T12:00:05Z'),
+    })
+    rerender(<SchedulingPage apiOverride={apiClient} />)
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(compare).toHaveBeenCalledTimes(1)
   })
 
   it('shows comparison loading and then passes server results to the comparison view', async () => {

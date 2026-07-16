@@ -167,6 +167,7 @@ export function useSchedulingWorkbench(
           const submittedAttemptFinished = latestAttempt.id === submittedAttempt.id
             && TERMINAL_SOLVE_ATTEMPT_STATUSES.has(latestAttempt.status)
           const submittedAttemptSuperseded = latestAttempt.id > submittedAttempt.id
+            && TERMINAL_SOLVE_ATTEMPT_STATUSES.has(latestAttempt.status)
           if (submittedAttemptFinished || submittedAttemptSuperseded) {
             finishSubmittedAttempt(generation)
           }

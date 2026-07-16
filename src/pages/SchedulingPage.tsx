@@ -1,5 +1,5 @@
 import { LoaderCircle, RefreshCw } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { FlowScheduleTimeline } from '../components/FlowScheduleTimeline'
 import { PageHeader } from '../components/PageHeader'
 import { PlanActualTimeline } from '../components/PlanActualTimeline'
@@ -80,6 +80,12 @@ interface ComparisonRequestState {
   error: Error | null
 }
 
+interface ComparisonRequestLifecycle {
+  request: ComparisonRequestIdentity
+  refreshToken: number
+  status: 'idle' | 'loading' | 'success' | 'error'
+}
+
 function isCurrentComparisonRequest(
   request: ComparisonRequestIdentity,
   apiClient: Pick<typeof api, 'compareSchedulePlans'>,
@@ -107,6 +113,15 @@ function ComparisonRequest({
     comparison: null,
     error: null,
   }))
+  const lifecycleRef = useRef<ComparisonRequestLifecycle>({
+    request: {
+      apiClient,
+      currentPlanId: currentPlan.id,
+      previousPlanId,
+    },
+    refreshToken,
+    status: 'idle',
+  })
   const stateIsCurrent = isCurrentComparisonRequest(
     state.request,
     apiClient,
@@ -118,21 +133,38 @@ function ComparisonRequest({
   const isLoading = !stateIsCurrent || (comparison === null && error === null)
 
   useEffect(() => {
-    let active = true
     const request = {
       apiClient,
       currentPlanId: currentPlan.id,
       previousPlanId,
     }
+    const lifecycle = lifecycleRef.current
+    const lifecycleIsCurrent = isCurrentComparisonRequest(
+      lifecycle.request,
+      apiClient,
+      currentPlan.id,
+      previousPlanId,
+    )
+    const shouldRetry = lifecycleIsCurrent
+      && lifecycle.status === 'error'
+      && lifecycle.refreshToken !== refreshToken
+    if (lifecycleIsCurrent && lifecycle.status !== 'idle' && !shouldRetry) {
+      return
+    }
+
+    let active = true
+    lifecycleRef.current = { request, refreshToken, status: 'loading' }
 
     void apiClient.compareSchedulePlans(currentPlan.id, previousPlanId).then(
       (nextComparison) => {
         if (active) {
+          lifecycleRef.current = { request, refreshToken, status: 'success' }
           setState({ request, comparison: nextComparison, error: null })
         }
       },
       (caught: unknown) => {
         if (active) {
+          lifecycleRef.current = { request, refreshToken, status: 'error' }
           setState({ request, comparison: null, error: toError(caught) })
         }
       },
@@ -141,7 +173,7 @@ function ComparisonRequest({
     return () => {
       active = false
     }
-  }, [apiClient, currentPlan.id, previousPlanId, refreshToken])
+  }, [apiClient, currentPlan.id, previousPlanId, refreshToken, state.error])
 
   return (
     <ScheduleVersionComparison

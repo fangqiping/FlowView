@@ -703,16 +703,20 @@ describe('useSchedulingWorkbench', () => {
     expect(result.current.isReplanning).toBe(false)
   })
 
-  it('clears replanning when a newer attempt supersedes the submitted attempt', async () => {
+  it('clears replanning only after a newer superseding attempt becomes terminal', async () => {
     const submittedAttempt = createAttempt({ id: 77 })
     const newerPendingPlan = createPlan({
       latestSolveAttempt: createAttempt({ id: 78, status: 0 }),
+    })
+    const newerTerminalPlan = createPlan({
+      latestSolveAttempt: createAttempt({ id: 78, status: 2 }),
     })
     const { apiClient, getCurrentSchedulePlan, getSchedulePlanHistory, requestScheduleReplan } =
       createApiClient()
     getCurrentSchedulePlan
       .mockResolvedValueOnce(createPlan())
       .mockResolvedValueOnce(newerPendingPlan)
+      .mockResolvedValueOnce(newerTerminalPlan)
     getSchedulePlanHistory.mockResolvedValue([])
     requestScheduleReplan.mockResolvedValue(submittedAttempt)
 
@@ -723,6 +727,10 @@ describe('useSchedulingWorkbench', () => {
       await result.current.replan()
     })
 
+    expect(result.current.isReplanning).toBe(true)
+    await act(async () => {
+      await result.current.refresh()
+    })
     expect(result.current.isReplanning).toBe(false)
     await act(async () => {
       await result.current.replan()
